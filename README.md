@@ -1,0 +1,61 @@
+# Description Shortener
+
+A self-contained, fully local Mac app that shortens descriptions to 110 characters or fewer, including spaces. No account, API key, Python installation, or model download is needed after installing the app.
+
+[Download page](https://description-shortener.great-americ-8514.chatgpt.site) · [Versioned releases](https://github.com/MichaelBrandonFalk/description-shortener/releases) · [Open-source research](docs/research.md)
+
+## Use
+
+1. Unzip the download and drag **Description Shortener V1.0.app** to Applications.
+2. Open the app. Paste one description per line, or choose/drop a file.
+3. Click **Shorten description** or **Shorten & save copy**.
+4. Copy the text or use the saved file. Review details lists changed descriptions and any blocked locations.
+
+V1.0 is ad-hoc signed, not Apple notarized. On first launch, macOS may require approving the app in System Settings → Privacy & Security → Open Anyway. This does not require disabling Gatekeeper. Developer ID signing is required for a future notarized release.
+
+## Supported input
+
+| Input | Output and preservation |
+| --- | --- |
+| Pasted text | Only shortened descriptions in the output/copy area, one per line. |
+| XLSX | XLSX; targeted description-like columns and long prose fields. Keeps sheet names, row order, formulas, non-description values, styles and untouched package parts. Changed rich-text cells become plain text while keeping cell formatting. |
+| CSV | CSV; preserves column names, field values outside selected descriptions, delimiter, common encoding and newline style. Quoting may be normalized. |
+| DOCX | DOCX; body paragraphs, including table cells. Retains paragraph structure and styles. Changed text inherits the first run's formatting. Headings, headers and footers remain unchanged. Complex fields and tracked changes may require review. |
+| TXT | TXT; one description per nonempty line. |
+| RTF, DOC, ODT | Same format through macOS conversion. Complex layout may change. |
+| PDF | Selectable text is extracted and returned as TXT. No OCR or PDF layout preservation. |
+
+The app inspects selected files without a written prompt. It never overwrites originals or existing destination files.
+
+## Rules and verification
+
+Every returned description is checked for the 110-character limit, em dashes, terminal punctuation, and numeric changes. A separate local-model pass checks complete sentences, equivalent meaning and close wording. It does not intentionally add claims or marketing language. These semantic checks are probabilistic, so review changed wording before use.
+
+Some inputs cannot retain all details within 110 characters. If any selected description fails after retries, file export is blocked and the app lists its location. Resolve those source descriptions and run again. The app does not truncate, silently discard facts, or put error messages into description cells.
+
+Long identifier/name/title/link columns are excluded when identifiable. Generic long prose columns are selected by best judgment. Hidden sheets are included; formulas, blank cells and numeric values are left alone.
+
+## Requirements and privacy
+
+Apple Silicon (M1 or newer), macOS 14 or newer, 8 GB RAM minimum; 16 GB recommended. Allow roughly 4 GB free space during installation. Tested on an Apple Silicon Mac running macOS 26.4; older supported macOS versions are not independently tested.
+
+Processing is offline. The bundled engine listens only on a random localhost port with a per-run random key. There are no analytics, remote model calls, or persistent input logs. Temporary conversion files are removed after processing. Inputs and outputs are not uploaded. Project/license links open externally when clicked.
+
+## Build and version a change
+
+Requires Xcode Command Line Tools and Python 3.13 on an Apple Silicon Mac.
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+bash scripts/fetch_vendor.sh
+.venv/bin/python scripts/build.py
+```
+
+`VERSION` is the single version source. Every delivered edit must increment it (1.0, 1.1, 1.2, ...), update CHANGELOG.md, and create a new immutable GitHub tag/release and ZIP. Old releases remain available. The build refuses to overwrite an existing versioned ZIP. Do not commit model weights, virtual environments, builds or private input files.
+
+Use `scripts/release.sh` to publish the current verified version after committing source. GitHub authentication must be configured. Signing/notarization can be added when an Apple Developer ID certificate is available.
+
+## Open source
+
+See [third-party notices](THIRD_PARTY_NOTICES.md) and [research](docs/research.md). Credits are linked on the download page and at the bottom of the app. Full bundled license texts are available through the app's Licenses button.
