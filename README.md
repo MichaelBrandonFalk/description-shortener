@@ -6,10 +6,10 @@ A self-contained, fully local desktop app that shortens descriptions to a chosen
 
 ## Use
 
-1. On Mac, unzip the download and drag **Description Shortener V1.3.app** to Applications.
+1. On Mac, unzip the download and drag **Description Shortener V1.4.app** to Applications.
 2. Open the app. Paste one description per line, or choose/drop a file.
 3. Click **Shorten description** or **Shorten & save copy**.
-4. Copy the text or use the saved file. Review details lists changed descriptions and any blocked locations.
+4. Copy the text or use the saved file. Review details lists changed descriptions and any review flags.
 
 The Mac app is ad-hoc signed, not Apple notarized. On first launch, macOS may require approving the app in System Settings → Privacy & Security → Open Anyway. This does not require disabling Gatekeeper. Developer ID signing is required for a future notarized release.
 
@@ -31,11 +31,9 @@ The app inspects selected files without a written prompt. It never overwrites or
 
 ## Rules and verification
 
-Every returned description is checked against the chosen character limit, em dashes, terminal punctuation, and numeric changes. The rules and a soft word budget are supplied to the local model before drafting. A conservative whole-phrase/unit pass may compact an overlong draft without slicing text. Invalid drafts receive specific revision feedback; a separate local-model pass checks complete sentences, equivalent meaning and close wording. The model stays loaded while the app is open, and checked descriptions are cached in memory for faster repeat runs. It does not intentionally add claims or marketing language. These semantic checks are probabilistic, so review changed wording before use.
+Every returned description is checked against the chosen character limit, em dashes, terminal punctuation, and invented numeric values. The local model receives a short gist-focused prompt and word budget before drafting. Supporting details may be omitted. Retained facts should remain accurate, but model output still needs human review.
 
-Incidental narrative enjoyment may be omitted while the main meaning and material facts remain. Product attributes, names, specifications and quantities are protected.
-
-Some inputs cannot retain all material facts within the selected character limit. If any selected description fails after retries, file export is blocked and the app lists its location. Resolve those source descriptions and run again. The app does not truncate, silently discard facts, or put error messages into description cells.
+There is at most one corrective generation pass and no second model reviewer. Shortened results carry “May need review” outside the copied text and outside description cells. If inference fails or drafts cannot pass the format checks, the app returns a flagged source excerpt when usable prose is available. An excerpt may be incomplete in meaning or grammar; the flag is deliberate. Original files are preserved.
 
 Long identifier/name/title/link columns are excluded when identifiable. Generic long prose columns are selected by best judgment. Hidden sheets are included; formulas, blank cells and numeric values are left alone.
 
@@ -72,14 +70,18 @@ The complete V1.1 ZIP is about 7 GB, so its Download button uses the existing st
 
 ## Use in the browser
 
-[Open the browser app](https://michaelbrandonfalk.github.io/description-shortener/browser/). It uses the same pinned Gemma 4 12B model on your own GPU through wllama. The first use downloads about 7 GB from the official model URL; SHA-256 is checked before loading. The model is stored in this browser’s private file storage. Clearing browser data removes it. Use a WebGPU-capable browser and 16 GB RAM or more. Loading and processing depend on the browser and device; the native Mac app is faster on the tested Mac.
+[Open the browser app](https://michaelbrandonfalk.github.io/description-shortener/browser/). It uses the same pinned Gemma 4 12B model on your own GPU through wllama. The first use downloads about 7 GB from the official model URL; SHA-256 is checked before loading. The model is stored in this browser’s private file storage. Application updates retain the same model file and origin. Persistent storage is requested, but browser eviction, changing browsers or clearing browser data can require another download. For the AI model, use a WebGPU-capable browser and preferably 24 GB RAM or more. A quick, flagged source excerpt is available without loading the model. Loading and processing depend on the browser and device; the native Mac app is faster on the tested Mac.
 
 Paste text or select XLSX, CSV, DOCX or UTF-8 TXT files. No text or document is uploaded for inference. The browser saves a new file and retains sheet names, formulas, non-description values and untouched Office package content. Complex Word fields or tracked changes need review; legacy document formats and PDF use the Mac app. Browser CSV quoting may normalize, while delimiter, BOM, line endings, order and other field values are retained.
 
 Run `node --test tests/browser.test.mjs` for browser counting, limit, cache and CSV checks. `scripts/export_browser_rules.py` keeps the model instructions and JSON schemas synchronized with the Python engine. `scripts/prepare_browser_model.py` verifies GGUF shard metadata against the pinned original weights.
 
-## Windows and Ubuntu previews (V1.3)
+## Windows, Ubuntu and Linux Mint previews (V1.4)
 
-The same download page offers a self-contained Windows x64 ZIP and Ubuntu 22.04 x64 DEB. Extract the entire Windows folder and open DescriptionShortener.exe, or install the Ubuntu DEB with your package installer. Python and the pinned model are included. The Windows preview is unsigned.
+The same download page offers a self-contained Windows x64 ZIP and Ubuntu 22.04 / Linux Mint 22.x x64 DEB. Extract the entire Windows folder and open DescriptionShortener.exe, or install the Ubuntu DEB with your package installer. Python and the pinned model are included. The Windows preview is unsigned.
 
-These previews support pasted text, XLSX, CSV, DOCX and TXT. Mac document conversion and PDF import remain Mac-only. CPU processing is checked on Windows Server 2022 and Ubuntu 22.04 hosted runners using all 11 actual-model benchmarks, selected-limit/cache checks and packaged file processing. The exact downloadable archives are also reconstructed and verified, extracted/installed, and used to launch the native app. GPU acceleration and consumer hardware remain unqualified. See [desktop details](desktop/README.md).
+These previews support pasted text, XLSX, CSV, DOCX and TXT. Mac document conversion and PDF import remain Mac-only. CPU processing is checked on Windows Server 2022 and Ubuntu 22.04 hosted runners using 11 actual-model gist benchmarks, selected-limit/cache checks and packaged file processing. The exact downloadable archives are also reconstructed and verified, extracted/installed, and used to launch the native app. GPU acceleration and consumer hardware remain unqualified. See [desktop details](desktop/README.md).
+
+Linux Mint 22.3 Cinnamon is checked using checksum-pinned official ISO userspace in a CI chroot: install the exact DEB, launch the sandboxed interface as a regular user, and exercise the packaged model and files. This is not a booted Cinnamon session or GPU hardware test. Other Mint 22.x editions share the Ubuntu 24.04 base but are not individually tested. LMDE is not qualified. See [Mint release notes](https://linuxmint.com/rel_wilma.php).
+
+The browser’s **Unload model to free memory** control releases RAM/GPU resources while keeping the downloaded weights cached. **Load cached model** restores AI processing without downloading the weights again.

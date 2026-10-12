@@ -4,6 +4,7 @@
 
 - Shorten to the gist, allowing supporting details to be dropped. Valid drafts are returned with a “May need review” flag instead of being withheld by a second model review.
 - At most two generation attempts. Model failures return a flagged source excerpt when usable prose is available.
+- Added a browser model-unload control that releases memory without deleting cached weights.
 - Browser model context and batch sizes reduced; failed engines are released. Quick source excerpts are available without loading the model.
 - Reuse the existing browser model cache across app releases and request persistent storage. Clearing data or browser eviction can still remove it.
 - Linux Mint 22.3 userspace installer verification added, including sandboxed UI, actual-model inference and file preservation.

@@ -12,7 +12,7 @@ Initial research preceded implementation on October 9, 2026. Model selection for
 
 The interface uses Apple's system SwiftUI/AppKit frameworks. No separately installed UI runtime is required.
 
-V1.0 bundled Qwen3 4B. V1.1 selects Gemma 4 12B after comparing Qwen3.5 2B/4B/9B, Mistral Small 3.2 24B, and Granite 4.2 8B locally, with additional hosted screening. The final rules preserve material facts while allowing incidental enjoyment to be omitted. See [evaluation evidence](model_evaluation.md). The model is about 7 GB, and no model setup is required after installation.
+V1.0 bundled Qwen3 4B. V1.1 selects Gemma 4 12B after comparing Qwen3.5 2B/4B/9B, Mistral Small 3.2 24B, and Granite 4.2 8B locally, with additional hosted screening. The V1.1–V1.3 rules preserved material facts while allowing incidental enjoyment to be omitted. See [evaluation evidence](model_evaluation.md). The model is about 7 GB, and no model setup is required after installation.
 
 ## Alternatives considered
 
@@ -22,7 +22,7 @@ V1.0 bundled Qwen3 4B. V1.1 selects Gemma 4 12B after comparing Qwen3.5 2B/4B/9B
 
 ## Limits
 
-No language model can guarantee semantic equivalence for arbitrary descriptions. A 110-character budget can be incompatible with retaining all material facts. The app combines word-budget guidance, bounded drafting/revision, conservative whole-phrase and unit formatting, hard format checks, protected numeric tokens, and a separate model review. Incidental narrative enjoyment may be omitted; product attributes and factual claims remain material. Unresolved items block file export and show their locations. Human review is still recommended for changed wording. The original is never overwritten.
+No language model can guarantee semantic equivalence for arbitrary descriptions. A 110-character budget can be incompatible with retaining all material facts. V1.1–V1.3 combined word-budget guidance, bounded drafting/revision, conservative whole-phrase and unit formatting, hard format checks, protected numeric tokens, and a separate model review. Incidental narrative enjoyment may be omitted; product attributes and factual claims remain material. In those versions unresolved items blocked file export and show their locations. Human review is still recommended for changed wording. The original is never overwritten.
 
 ## Browser processing, V1.2
 
@@ -35,3 +35,11 @@ No language model can guarantee semantic equivalence for arbitrary descriptions.
 Windows x64 and Ubuntu 22.04 x64 reuse the pinned model and native processor through Electron. Native CI runs checked all 11 model cases and the extracted/installed application. The Windows candidate needed app-local Microsoft C++ runtime DLLs; actual process-module checks confirmed those files loaded from the app folder. Ubuntu installation caught and resolved PAX-header and missing-directory issues before publication.
 
 The pinned Linux CPU runtime requires at most GLIBC 2.34, GLIBCXX 3.4.30 and CXXABI 1.3.13. Ubuntu 22.04 provides [GCC 12 libstdc++](https://packages.ubuntu.com/jammy/amd64/libstdc%2B%2B6). Use current Ubuntu updates. This qualifies the tested x64 Ubuntu target, not every distribution or GPU. [Microsoft local deployment guidance](https://learn.microsoft.com/en-us/cpp/windows/choosing-a-deployment-method) describes the Windows runtime packaging method.
+
+## V1.4 gist and Linux Mint checks
+
+The user-approved goal is a useful gist within the character limit, with supporting details allowed to drop. The prompt now states that directly. Valid drafts are returned with a review flag instead of being withheld by a separate semantic reviewer. Model failures use a clearly flagged source excerpt where possible. Native checks cover 11 synthetic cases, character limits, cache isolation and Office/CSV/TXT preservation.
+
+The browser keeps its stable model file across application releases, requests persistent storage, uses a smaller 2048-token context and smaller batches, and releases failed runtimes. It also offers flagged excerpts without loading weights. Browser eviction or cleared data can still remove weights.
+
+[Linux Mint 22.x uses the Ubuntu 24.04 base](https://linuxmint.com/rel_wilma.php). The installer test uses [the official Linux Mint 22.3 Cinnamon ISO](https://linuxmint.com/edition.php?id=326), pinned to its [published SHA-256](https://mirrors.kernel.org/linuxmint/stable/22.3/sha256sum.txt). The CI chroot checks actual Mint userspace, package installation, sandbox permissions, interface launch as a regular user, local model inference and file preservation. A full booted desktop and GPU hardware are not covered; LMDE and older Mint editions are not qualified.
