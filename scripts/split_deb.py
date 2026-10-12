@@ -14,6 +14,8 @@ def package_deb(folder,model,output,version):
         def read(self,n):sink.phase='model';return self.file.read(n)
     try:
         with tarfile.open(fileobj=sink,mode='w',format=tarfile.GNU_FORMAT) as archive:
+            for name in ['opt','opt/description-shortener','usr','usr/share','usr/share/applications']:
+                info=tarfile.TarInfo(name);info.type=tarfile.DIRTYPE;info.mode=0o755;info.uid=info.gid=0;info.uname=info.gname='root';archive.addfile(info)
             def add(path,name):
                 info=archive.gettarinfo(str(path),name);info.uid=info.gid=0;info.uname=info.gname='root'
                 if path.name=='chrome-sandbox':info.mode=0o4755
