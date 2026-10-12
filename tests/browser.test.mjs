@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {count,validateLimit,hardErrors,BrowserShortener} from '../docs/browser/shortening.mjs';
-import {parseCSV,encodeCSV,relevant} from '../docs/browser/files.mjs';
+import {parseCSV,encodeCSV,relevant,processFile} from '../docs/browser/files.mjs';
 import {readFile} from 'node:fs/promises';
 const rules=JSON.parse(await readFile(new URL('../docs/browser/rules.json',import.meta.url)));
 test('counts spaces, punctuation and Unicode as Python code points',()=>{assert.equal(count('A 😀.'),4);const text='A'.repeat(108)+' .';assert.equal(count(text),110);assert.deepEqual(hardErrors(text,text,110),[]);assert.ok(hardErrors(text+'!',text+'!',110).length);assert.deepEqual(hardErrors(text+'!',text+'!',111),[]);});
@@ -11,3 +11,13 @@ test('resource failure produces a flagged source excerpt',async()=>{let calls=0,
 test('invalid long drafts have at most one revision before a flagged fallback',async()=>{let calls=0;const runtime={async createChatCompletion(){calls++;return {choices:[{message:{content:JSON.stringify({text:'X'.repeat(120)+'.'})}}]};}};const model=new BrowserShortener(runtime,rules);const source='The bottle is designed to hold water safely and is suitable for outdoor activities and everyday use throughout the year.';const result=await model.shorten(source,110);assert.ok(count(result)<=110);assert.equal(calls,2);assert.match(model.reviewFor(source,110),/May need review/);});
 
 test('chosen higher limit is included in generation and final validation',async()=>{const text='The Acme X2 camera records 4K video at 60 fps, weighs 450 g, includes a 24 mm lens, and comes with a 2-year warranty.';const calls=[];const runtime={async createChatCompletion(request){calls.push(request);return {choices:[{message:{content:JSON.stringify(request.messages[0].content.startsWith('You are a strict')?{equivalent:true,complete_sentences:true,close_wording:true,issue:''}:{text})}}]};}};const model=new BrowserShortener(runtime,rules);assert.equal(await model.shorten(text+' This is a description of its specifications.',150),text);assert.ok(calls[0].messages[0].content.includes('150 characters'));assert.equal(count(text),117);assert.deepEqual(hardErrors(text,text,150),[]);});
+
+test('CSV is exported after model resource failure, with review flags outside its fields',async()=>{
+  const source='A tired fox ate fruit, but it felt sick. Its friend was helping somebody else and could not come right away because it had an important task to finish.';
+  const model=new BrowserShortener({async createChatCompletion(){throw new Error('out of memory');},async exit(){}},rules);
+  const bytes=new TextEncoder().encode('SKU;Description;Price\r\n001;'+source+';12.90\r\n');
+  const file={name:'products.csv',size:bytes.length,async arrayBuffer(){return bytes.buffer;}};
+  const result=await processFile(file,model,110,()=>{});
+  const rows=parseCSV(new TextDecoder().decode(result.bytes),';');
+  assert.deepEqual(rows[0],['SKU','Description','Price']);assert.equal(rows[1][0],'001');assert.equal(rows[1][2],'12.90');assert.equal(rows[1][1],'A tired fox ate fruit.');assert.equal(result.warnings.length,1);assert.ok(!rows[1][1].includes('review'));
+});

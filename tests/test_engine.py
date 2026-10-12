@@ -40,6 +40,18 @@ class Tests(unittest.TestCase):
         path.write_text(ORIGINAL+'\nA different description.\n')
         result = process_file(path, out, Stub())
         self.assertFalse(result['ok']); self.assertFalse(out.exists()); self.assertIn(ORIGINAL, path.read_text())
+    def test_model_failure_still_exports_csv_with_separate_warning(self):
+        model = LocalModel(Path('/unused'))
+        model.ask = lambda *args: (_ for _ in ()).throw(OSError('unavailable'))
+        source = self.dir/'source.csv'; target = self.dir/'edited.csv'
+        source.write_text('SKU;Description;Price\n001;'+ORIGINAL+';12.90\n')
+        before = source.read_bytes()
+        result = process_file(source, target, model)
+        self.assertTrue(result['ok']); self.assertTrue(result['warnings'])
+        self.assertEqual(source.read_bytes(), before)
+        rows = list(csv.reader(io.StringIO(target.read_text()), delimiter=';'))
+        self.assertEqual(rows[1][0], '001'); self.assertEqual(rows[1][2], '12.90')
+        self.assertLessEqual(len(rows[1][1]), 110); self.assertNotIn('review', rows[1][1])
     def test_original_and_existing_protected(self):
         path = self.dir/'in.txt'; path.write_text(ORIGINAL)
         with self.assertRaises(ValueError): process_file(path, path, Stub())
