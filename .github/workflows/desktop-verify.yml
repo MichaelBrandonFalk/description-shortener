@@ -5,6 +5,11 @@ on:
       build_run:
         description: Successful desktop preview build run ID
         required: true
+      platform:
+        description: Archive platform to verify
+        type: choice
+        default: All
+        options: [All, Windows, Linux]
 permissions:
   contents: read
   actions: read
@@ -13,11 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-2022
-            platform: Windows-x64
-          - os: ubuntu-22.04
-            platform: Linux-x64
+        os: ${{ fromJSON(inputs.platform == 'Linux' && '["ubuntu-22.04"]' || inputs.platform == 'Windows' && '["windows-2022"]' || '["windows-2022","ubuntu-22.04"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -31,7 +32,7 @@ jobs:
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: Description-Shortener-${{ matrix.platform }}
+          name: Description-Shortener-${{ runner.os == 'Windows' && 'Windows-x64' || 'Linux-x64' }}
           path: downloads
           run-id: ${{ inputs.build_run }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
