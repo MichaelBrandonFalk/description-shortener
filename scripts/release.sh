@@ -10,4 +10,4 @@ if git rev-parse "v${version}" >/dev/null 2>&1; then echo 'Version tag already e
 codesign --verify --deep --strict "dist/Description Shortener V${version}.app"
 git tag -a "v${version}" -m "Release Description Shortener V${version}"
 git push origin HEAD "v${version}"
-gh release create "v${version}" "$archive" "downloads/SHA256-V${version}.txt" --verify-tag --title "Description Shortener V${version}" --notes-file docs/release_notes.md
+gh release create "v${version}" "downloads/Description-Shortener-V${version}-zip-head.bin" "downloads/Description-Shortener-V${version}-zip-tail.bin" "downloads/SHA256-V${version}.txt" --verify-tag --title "Description Shortener V${version}" --notes-file docs/release_notes.md

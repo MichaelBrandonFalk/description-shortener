@@ -1,0 +1,155 @@
+[
+  {
+    "id": "narrative",
+    "description": "Morgan and Jamie Parker bought their Cedar Bay vacation home around three years ago. They enjoyed it so much that they wanted to add outdoor living space.",
+    "required": [
+      "Morgan and Jamie Parker",
+      "Cedar Bay",
+      "(?:vacation|holiday) home",
+      "(?:want|plan)",
+      "outdoor living space",
+      "(?:around|about|~)",
+      "(?:3|three)"
+    ],
+    "forbidden": [
+      "\\b(?:added|built|completed)\\b"
+    ]
+  },
+  {
+    "id": "bottle",
+    "description": "This durable stainless steel bottle is designed to hold 500 ml of water and is safe to clean in the dishwasher.",
+    "required": [
+      "durable",
+      "stainless steel",
+      "bottle",
+      "500\\s?ml",
+      "water",
+      "dishwasher"
+    ],
+    "forbidden": []
+  },
+  {
+    "id": "camera",
+    "description": "The Acme X2 camera records 4K video at 60 fps, weighs 450 g, includes a 24 mm lens, and carries a 2-year warranty.",
+    "required": [
+      "Acme X2",
+      "camera",
+      "4K",
+      "60\\s?fps",
+      "450\\s?g",
+      "24\\s?mm",
+      "lens",
+      "2-year warranty"
+    ],
+    "forbidden": []
+  },
+  {
+    "id": "allergy",
+    "description": "This product does not contain nuts and is manufactured in a facility that does not process peanuts or tree nuts.",
+    "required": [
+      "(?:no nuts|not contain nuts)",
+      "facility",
+      "(?:does not|doesn't) process",
+      "peanuts",
+      "tree nuts"
+    ],
+    "forbidden": []
+  },
+  {
+    "id": "compatibility",
+    "description": "This adapter works with the Delta Z5 laptop only and does not support the Delta Z4 laptop or other models.",
+    "required": [
+      "adapter",
+      "Delta Z5",
+      "only",
+      "(?:does not|doesn't) support",
+      "Delta Z4",
+      "other models"
+    ],
+    "forbidden": []
+  },
+  {
+    "id": "scope",
+    "description": "The Arbor subscription costs $12 per month, includes 20 downloads, and can be canceled anytime without a fee.",
+    "required": [
+      "Arbor",
+      "\\$12",
+      "(?:per month|/month|monthly)",
+      "20 downloads",
+      "cancel",
+      "(?:without a fee|no fee|free)"
+    ],
+    "forbidden": []
+  },
+  {
+    "id": "camera_long",
+    "description": "The Acme X2 camera can record video in 4K at 60 frames per second. Its weight is 450 grams. It includes a 24 mm lens and comes with a warranty lasting 2 years.",
+    "required": [
+      "Acme X2",
+      "camera",
+      "4K",
+      "60\\s?(?:fps|frames per second)",
+      "450\\s?(?:g|grams)",
+      "24\\s?mm",
+      "lens",
+      "2[ -]?(?:year|yr).*warranty|warranty.*2[ -]?(?:year|yr)"
+    ],
+    "forbidden": []
+  },
+  {
+    "id": "allergy_long",
+    "description": "This product is made without any nuts. The facility where it is manufactured does not process either peanuts or tree nuts.",
+    "required": [
+      "(?:without.*nuts|no nuts|not contain.*nuts|nut-free)",
+      "facility",
+      "(?:does not|doesn't).*process|processes (?:no|neither)",
+      "peanuts",
+      "tree nuts"
+    ],
+    "forbidden": []
+  },
+  {
+    "id": "compatibility_long",
+    "description": "The Delta adapter is compatible only with the Delta Z5 laptop. It is not compatible with the Delta Z4 laptop, and it is not compatible with any other model.",
+    "required": [
+      "Delta",
+      "adapter",
+      "(?:\\b(?:Delta Z5|Z5)\\b)",
+      "only",
+      "(?:not|doesn't|no|excluding|except)",
+      "(?:\\b(?:Delta Z4|Z4)\\b)",
+      "other model"
+    ],
+    "forbidden": []
+  },
+  {
+    "id": "subscription_long",
+    "description": "The Arbor subscription has a price of $12 each month. It provides 20 downloads. Subscribers can cancel their subscription at any time, and cancellation has no fee.",
+    "required": [
+      "Arbor",
+      "\\$12",
+      "(?:month|monthly|/mo\\b)",
+      "20 downloads",
+      "cancel",
+      "(?:no fee|without a fee|free)"
+    ],
+    "forbidden": []
+  },
+  {
+    "id": "intention_long",
+    "description": "Lena Ortiz purchased a cabin in Pine Cove about four years ago. She enjoyed the cabin so much that she wanted to add a covered deck.",
+    "required": [
+      "Lena Ortiz",
+      "Pine Cove",
+      "cabin",
+      "bought|purchased",
+      "about|around|~",
+      "4|four",
+      "wanted|wanting",
+      "covered deck"
+    ],
+    "forbidden": [
+      "\\b(?:added|built|completed)\\b"
+    ]
+  }
+]

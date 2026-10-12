@@ -3,7 +3,7 @@ import AppKit
 import UniformTypeIdentifiers
 import PDFKit
 
-let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
+let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1"
 let ink = Color(red: 0.12, green: 0.22, blue: 0.24)
 let teal = Color(red: 0.10, green: 0.40, blue: 0.37)
 let paper = Color(red: 0.965, green: 0.961, blue: 0.941)
@@ -14,13 +14,15 @@ let paper = Color(red: 0.965, green: 0.961, blue: 0.941)
     @Published var output = ""
     @Published var source: URL?
     @Published var busy = false
-    @Published var status = "Everything stays on this Mac."
+    @Published var status = ""
     @Published var issue = ""
     @Published var progress = 0.0
     @Published var saved: URL?
     @Published var review = ""
     @Published var showReview = false
     private var task: Process?
+    private var requestPipe: FileHandle?
+    private var workerID = UUID()
     private var buffer = Data()
     private var temporary: URL?
     private var chosenOutput: URL?
@@ -56,7 +58,7 @@ let paper = Color(red: 0.965, green: 0.961, blue: 0.941)
     }
     func cancel() {
         runID = UUID()
-        task?.terminate(); task = nil
+        task?.terminate(); task = nil; requestPipe = nil; workerID = UUID()
         busy = false; status = "Canceled. No result was exported."; progress = 0
         cleanup()
     }
@@ -75,7 +77,7 @@ let paper = Color(red: 0.965, green: 0.961, blue: 0.941)
             destination = url
         }
         output = ""; issue = ""; saved = nil; review = ""; busy = true; progress = 0
-        status = "Inspecting input and loading the local model…"
+        status = "Shortening and checking your description…"
         chosenOutput = destination; convertedOutput = nil; conversionExtension = nil
         receivedResult = false
         let id = UUID(); runID = id
@@ -111,32 +113,50 @@ let paper = Color(red: 0.965, green: 0.961, blue: 0.941)
                 }
                 request = ["mode": "file", "source": processingSource.path, "destination": processingDestination.path]
             }
-            let process = Process()
-            let inputPipe = Pipe(); let outputPipe = Pipe()
-            process.executableURL = executable
-            process.arguments = [resources.path]
-            process.standardInput = inputPipe; process.standardOutput = outputPipe
-            process.standardError = FileHandle.nullDevice
-            buffer = Data()
-            outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-                let data = handle.availableData
-                if data.isEmpty { handle.readabilityHandler = nil; return }
-                Task { @MainActor [weak self] in self?.consume(data, id: id) }
-            }
-            process.terminationHandler = { [weak self] ended in
-                Task { @MainActor [weak self] in
-                    // Pipe delivery is asynchronous; allow queued final output to arrive.
-                    try? await Task.sleep(for: .milliseconds(300))
-                    guard let self, self.runID == id else { return }
-                    if !self.receivedResult { self.fail("The local processor stopped unexpectedly. Please try again.") }
-                    self.task = nil
-                }
-            }
-            task = process
-            try process.run()
-            inputPipe.fileHandleForWriting.write(try JSONSerialization.data(withJSONObject: request))
-            try inputPipe.fileHandleForWriting.close()
+            try ensureWorker()
+            request["request_id"] = id.uuidString
+            try send(request)
         } catch { fail(error.localizedDescription) }
+    }
+    func warmUp() {
+        do {
+            try ensureWorker()
+            try send(["mode": "warm", "request_id": "warm"])
+        } catch { fail(error.localizedDescription) }
+    }
+    private func send(_ request: [String: Any]) throws {
+        var data = try JSONSerialization.data(withJSONObject: request)
+        data.append(10)
+        try requestPipe?.write(contentsOf: data)
+    }
+    private func ensureWorker() throws {
+        if let task, task.isRunning { return }
+        let resources = Bundle.main.resourceURL!
+        let executable = resources.appendingPathComponent("helper/shortener-helper")
+        let process = Process()
+        let inputPipe = Pipe(); let outputPipe = Pipe()
+        process.executableURL = executable
+        process.arguments = [resources.path, "--serve"]
+        process.standardInput = inputPipe; process.standardOutput = outputPipe
+        process.standardError = FileHandle.nullDevice
+        buffer = Data()
+        let id = UUID(); workerID = id
+        outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            let data = handle.availableData
+            if data.isEmpty { handle.readabilityHandler = nil; return }
+            Task { @MainActor [weak self] in self?.consume(data, worker: id) }
+        }
+        process.terminationHandler = { [weak self] _ in
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .milliseconds(200))
+                guard let self, self.workerID == id else { return }
+                if self.busy { self.fail("The local processor stopped. Please try again.") }
+                self.task = nil; self.requestPipe = nil
+            }
+        }
+        try process.run()
+        task = process
+        requestPipe = inputPipe.fileHandleForWriting
     }
     func convert(_ source: URL, to destination: URL, format: String) throws {
         let process = Process()
@@ -148,12 +168,17 @@ let paper = Color(red: 0.965, green: 0.961, blue: 0.941)
             throw NSError(domain: "Conversion", code: 1, userInfo: [NSLocalizedDescriptionKey: "macOS could not convert this document. Save it as DOCX and try again."])
         }
     }
-    private func consume(_ data: Data, id: UUID) {
-        guard id == runID else { return }
+    private func consume(_ data: Data, worker: UUID) {
+        guard worker == workerID else { return }
         buffer.append(data)
         while let newline = buffer.firstIndex(of: 10) {
             let line = buffer[..<newline]; buffer.removeSubrange(...newline)
             guard let event = try? JSONSerialization.jsonObject(with: line) as? [String: Any] else { continue }
+            if event["event"] as? String == "ready" {
+                if event["ok"] as? Bool != true { fail(event["error"] as? String ?? "The local model could not load.") }
+                continue
+            }
+            guard event["request_id"] as? String == runID.uuidString else { continue }
             if event["event"] as? String == "progress" {
                 let current = event["current"] as? Int ?? 0, total = event["total"] as? Int ?? 1
                 progress = Double(max(0, current - 1)) / Double(max(total, 1))
@@ -198,6 +223,17 @@ let paper = Color(red: 0.965, green: 0.961, blue: 0.941)
 struct ContentView: View {
     @StateObject private var model = Shortener()
     @State private var dragOver = false
+    private func inputButton(_ title: String, icon: String, mode: Int) -> some View {
+        Button { model.mode = mode; model.issue = ""; model.status = "" } label: {
+            Label(title, systemImage: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(model.mode == mode ? Color.white : ink)
+                .padding(.horizontal, 18).padding(.vertical, 11)
+                .background(model.mode == mode ? teal : Color.clear, in: RoundedRectangle(cornerRadius: 7))
+        }.buttonStyle(.plain).disabled(model.busy)
+            .accessibilityAddTraits(model.mode == mode ? .isSelected : [])
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             HStack(alignment: .top) {
@@ -207,20 +243,20 @@ struct ContentView: View {
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Description Shortener").font(.system(size: 28, weight: .semibold, design: .rounded))
-                    Text("Less text. Same meaning.").font(.system(size: 14)).foregroundStyle(.secondary)
+
                 }
                 Spacer()
                 Text("V\(appVersion)").font(.system(size: 12, weight: .medium, design: .monospaced)).padding(8).background(.white.opacity(0.8), in: Capsule())
             }
-            HStack(spacing: 12) {
-                Label("110 characters maximum", systemImage: "textformat.123")
-                Label("Fully local", systemImage: "lock.shield")
-                Label("No em dashes", systemImage: "checkmark.circle")
-            }.font(.system(size: 12)).foregroundStyle(teal)
-            Picker("Input", selection: $model.mode) {
-                Text("Paste text").tag(0)
-                Text("Process a file").tag(1)
-            }.pickerStyle(.segmented).frame(width: 300).disabled(model.busy)
+            HStack(spacing: 14) {
+                HStack(spacing: 4) {
+                    inputButton("Paste text", icon: "text.cursor", mode: 0)
+                    inputButton("Process a file", icon: "doc", mode: 1)
+                }.padding(4).background(Color.white, in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(ink.opacity(0.15)))
+                Spacer()
+                Text("110 characters maximum").font(.system(size: 12)).foregroundStyle(ink.opacity(0.75))
+            }
             if model.mode == 0 {
                 HStack(alignment: .top, spacing: 18) {
                     VStack(alignment: .leading, spacing: 8) {
@@ -229,7 +265,7 @@ struct ContentView: View {
                             .padding(12).background(.white, in: RoundedRectangle(cornerRadius: 12))
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(ink.opacity(0.12)))
                             .disabled(model.busy).accessibilityLabel("Original descriptions")
-                        Text("Paste one description per line.").font(.system(size: 12)).foregroundStyle(.secondary)
+                        Text("Paste one description per line.").font(.system(size: 12)).foregroundStyle(ink.opacity(0.65))
                     }
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
@@ -238,21 +274,21 @@ struct ContentView: View {
                             Button(action: model.copy) { Label("Copy", systemImage: "doc.on.doc") }.disabled(model.output.isEmpty)
                         }
                         ScrollView {
-                            Text(model.output.isEmpty ? "Your shortened text will appear here." : model.output)
-                                .font(.system(size: 16)).foregroundStyle(model.output.isEmpty ? .secondary : ink)
+                            Text(model.output.isEmpty ? "Shortened text" : model.output)
+                                .font(.system(size: 16)).foregroundStyle(model.output.isEmpty ? ink.opacity(0.5) : ink)
                                 .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(14)
                         }.frame(maxWidth: .infinity, maxHeight: .infinity)
                             .background(teal.opacity(0.055), in: RoundedRectangle(cornerRadius: 12))
-                        Text("Only the shortened text is copied.").font(.system(size: 12)).foregroundStyle(.secondary)
+
                     }
                 }.frame(minHeight: 220)
             } else {
                 VStack(spacing: 15) {
                     Image(systemName: model.source == nil ? "square.and.arrow.down" : "doc.text").font(.system(size: 37, weight: .light)).foregroundStyle(teal)
                     Text(model.source?.lastPathComponent ?? "Drop your file here").font(.system(size: 21, weight: .medium))
-                    Text("XLSX · CSV · DOCX · TXT · RTF · DOC · ODT · PDF").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("XLSX · CSV · DOCX · TXT · RTF · DOC · ODT · PDF").font(.system(size: 12)).foregroundStyle(ink.opacity(0.65))
                     Button(model.source == nil ? "Choose a file…" : "Choose another file…", action: model.selectFile).disabled(model.busy)
-                    Text(model.conversionNote).font(.system(size: 12)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    Text(model.conversionNote).font(.system(size: 12)).foregroundStyle(ink.opacity(0.65)).multilineTextAlignment(.center)
                 }.frame(maxWidth: .infinity, maxHeight: .infinity).frame(minHeight: 220).padding(16)
                     .background(dragOver ? teal.opacity(0.12) : Color.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 16))
                     .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(teal.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [6])))
@@ -272,7 +308,7 @@ struct ContentView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(model.status).font(.system(size: 13, weight: .medium))
-                        Text("Meaning is checked by a local model. Review changed wording before use.").font(.system(size: 11)).foregroundStyle(.secondary)
+
                     }
                     Spacer()
                     if !model.review.isEmpty { Button("Review details") { model.showReview = true } }
@@ -287,9 +323,9 @@ struct ContentView: View {
                 Text("Built with open source:")
                 Link("llama.cpp", destination: URL(string: "https://github.com/ggml-org/llama.cpp")!)
                 Text("·")
-                Link("Qwen3", destination: URL(string: "https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507")!)
+                Link("Gemma 4", destination: URL(string: "https://huggingface.co/google/gemma-4-12B-it")!)
                 Text("·")
-                Link("Unsloth", destination: URL(string: "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF")!)
+                Link("Google GGUF", destination: URL(string: "https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-gguf")!)
                 Text("·")
                 Link("lxml", destination: URL(string: "https://lxml.de/")!)
                 Text("·")
@@ -298,8 +334,10 @@ struct ContentView: View {
                 Link("PyInstaller", destination: URL(string: "https://pyinstaller.org/")!)
                 Spacer()
                 Button("Licenses") { if let url = Bundle.main.resourceURL?.appendingPathComponent("licenses") { NSWorkspace.shared.open(url) } }.buttonStyle(.link)
-            }.font(.system(size: 10)).foregroundStyle(.secondary)
-        }.padding(30).background(paper).foregroundStyle(ink).frame(minWidth: 880, minHeight: 650)
+            }.font(.system(size: 10)).foregroundStyle(ink.opacity(0.65))
+        }.padding(30).background(paper).foregroundStyle(ink).frame(minWidth: 880, minHeight: 600)
+            .preferredColorScheme(.light)
+            .task { model.warmUp() }
             .onOpenURL { model.accept($0) }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in model.cancel() }
             .sheet(isPresented: $model.showReview) {
@@ -311,10 +349,15 @@ struct ContentView: View {
     }
 }
 
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+}
+
 @main struct DescriptionShortenerApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     var body: some Scene {
         WindowGroup("Description Shortener V\(appVersion)") { ContentView() }
-            .defaultSize(width: 1020, height: 720)
+            .defaultSize(width: 1020, height: 680)
             .commands { CommandGroup(replacing: .newItem) {} }
     }
 }

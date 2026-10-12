@@ -96,4 +96,62 @@ class Tests(unittest.TestCase):
         self.assertEqual(out.read_text(),'\n'+SHORT+'\n\n')
         self.assertFalse(hard_errors('Café opens at 9.', 'Café opens at 9.'))
 
+class GenerationTests(unittest.TestCase):
+    def fake(self, drafts, verdicts):
+        model = LocalModel(Path('/unused'))
+        model.responses = iter(drafts)
+        model.verdicts = iter(verdicts)
+        model.calls = []
+        def ask(system, payload, schema=None):
+            model.calls.append((system, payload, schema))
+            return next(model.verdicts) if system == REVIEW else {'text': next(model.responses)}
+        model.ask = ask
+        return model
+    def test_invalid_draft_rewritten_internally(self):
+        good = {'equivalent': True, 'complete_sentences': True, 'close_wording': True, 'issue': ''}
+        model = self.fake([SHORT[:-1], SHORT], [good])
+        self.assertEqual(model.shorten(ORIGINAL), SHORT)
+        self.assertIn('complete sentence', model.calls[1][1]['previous_issue'])
+        self.assertNotIn('maxLength', str(model.calls[0][2]))
+        self.assertIn('word_budget_guidance', model.calls[0][1])
+    def test_unresolved_draft_has_explanatory_message(self):
+        model = self.fake([SHORT[:-1]] * 3, [])
+        with self.assertRaises(ReviewNeeded) as error: model.shorten(ORIGINAL)
+        self.assertIn('local model', str(error.exception))
+        self.assertIn('material facts', str(error.exception))
+        self.assertNotIn('Must end', str(error.exception))
+    def test_semantic_feedback_is_sent_to_generator(self):
+        bad = {'equivalent': False, 'complete_sentences': True, 'close_wording': True, 'issue': 'The draft turns a planned action into a completed action.'}
+        good = {'equivalent': True, 'complete_sentences': True, 'close_wording': True, 'issue': ''}
+        model = self.fake([SHORT, SHORT], [bad, good])
+        self.assertEqual(model.shorten(ORIGINAL), SHORT)
+        self.assertIn('planned action', model.calls[2][1]['previous_issue'])
+    def test_compaction_preserves_units_and_quoted_names(self):
+        raw = 'They bought a holiday home ~2 yrs ago and wanted an outdoor living space.'
+        compact = compact_draft(raw)
+        self.assertIn('~2yr ago', compact)
+        self.assertIn('wanted outdoor living space.', compact)
+        self.assertEqual(numeric_tokens(raw), numeric_tokens(compact))
+        self.assertEqual(compact_draft('The name is "an outdoor living space".'), 'The name is "an outdoor living space".')
+        self.assertEqual(compact_draft('A' * 120 + '.'), 'A' * 120 + '.')
+
+    def test_same_description_uses_session_cache(self):
+        good = {'equivalent': True, 'complete_sentences': True, 'close_wording': True, 'issue': ''}
+        model = self.fake([SHORT], [good])
+        model.shorten(ORIGINAL)
+        before=len(model.calls)
+        self.assertEqual(model.shorten(ORIGINAL), SHORT)
+        self.assertEqual(len(model.calls),before)
+    def test_overlength_result_is_never_returned(self):
+        long = 'This durable stainless steel bottle is designed to hold 500 ml of water and is safe to clean in the dishwasher today.'
+        model = self.fake([long] * 3, [])
+        with self.assertRaises(ReviewNeeded): model.shorten(ORIGINAL)
+        self.assertLess(model.calls[1][1]['word_budget_guidance'], model.calls[0][1]['word_budget_guidance'])
+        self.assertIn('exceeds 110', model.calls[1][1]['previous_issue'])
+
+    def test_equivalent_quantities(self):
+        self.assertEqual(numeric_tokens('About two years ago.'),numeric_tokens('~2 yrs ago.'))
+        self.assertNotEqual(numeric_tokens('two years'),numeric_tokens('3 years'))
+        self.assertNotEqual(numeric_tokens('twenty-five parts'),numeric_tokens('twenty parts'))
+
 if __name__ == '__main__': unittest.main()

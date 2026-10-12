@@ -9,13 +9,15 @@ import plistlib
 import shutil
 import subprocess
 import sys
+import struct
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 os.chdir(ROOT)
 VERSION = (ROOT/'VERSION').read_text().strip()
 APP = ROOT/'dist'/f'Description Shortener V{VERSION}.app'
 ZIP = ROOT/'downloads'/f'Description-Shortener-V{VERSION}-Apple-Silicon.zip'
-MODEL_SHA = '9c6e0763577125a994a9bea0bbd7a737ac4498b8a6a4e0f788727553af1806c9'
+MODEL_SHA = '93567e57a8fe10b23569b9d9ec38cd005deedf71e29477c421a4b83f418a538b'
 if ZIP.exists(): raise SystemExit('This version is already packaged. Bump VERSION before building another release.')
 if hashlib.file_digest(open(ROOT/'vendor/model.gguf','rb'),'sha256').hexdigest() != MODEL_SHA:
     raise SystemExit('Model checksum mismatch.')
@@ -74,8 +76,34 @@ if (ROOT/'build/AppIcon.icns').exists(): shutil.copy2(ROOT/'build/AppIcon.icns',
 run(['codesign','--force','--deep','--sign','-',APP])
 run(['codesign','--verify','--deep','--strict',APP])
 ZIP.parent.mkdir(exist_ok=True)
-run(['ditto','-c','-k','--sequesterRsrc','--keepParent',APP,ZIP])
+# Keep the pinned model stored verbatim. The download service streams the small
+# app header, upstream GGUF, and ZIP directory as one exact self-contained ZIP.
+# This avoids duplicating multi-GB public model weights on GitHub releases.
+model = resources/'model.gguf'
+parked = ROOT/'build/model-packaging.gguf'
+if parked.exists(): raise SystemExit('An interrupted packaging model needs recovery before rebuilding.')
+model.rename(parked)
+try:
+    run(['ditto','-c','-k','--sequesterRsrc','--keepParent',APP,ZIP])
+finally:
+    parked.rename(model)
+with zipfile.ZipFile(ZIP, 'a', allowZip64=True) as archive:
+    archive.write(model, f'{APP.name}/Contents/Resources/model.gguf', compress_type=zipfile.ZIP_STORED)
+    info = archive.getinfo(f'{APP.name}/Contents/Resources/model.gguf')
+with ZIP.open('rb') as archive:
+    archive.seek(info.header_offset)
+    header = archive.read(30)
+    name_size, extra_size = struct.unpack_from('<HH', header, 26)
+    model_offset = info.header_offset + 30 + name_size + extra_size
+    head = ROOT/'downloads'/f'Description-Shortener-V{VERSION}-zip-head.bin'
+    tail = ROOT/'downloads'/f'Description-Shortener-V{VERSION}-zip-tail.bin'
+    archive.seek(0)
+    head.write_bytes(archive.read(model_offset))
+    archive.seek(model_offset + info.file_size)
+    tail.write_bytes(archive.read())
+run(['codesign','--verify','--deep','--strict',APP])
 sha = hashlib.file_digest(open(ZIP,'rb'),'sha256').hexdigest()
 (ROOT/'downloads'/f'SHA256-V{VERSION}.txt').write_text(f'{sha}  {ZIP.name}\n')
-(ROOT/'build/release.json').write_text(json.dumps({'version':VERSION,'archive':ZIP.name,'sha256':sha,'bytes':ZIP.stat().st_size},indent=2)+'\n')
+(ROOT/'build/release.json').write_text(json.dumps({'version':VERSION,'archive':ZIP.name,'sha256':sha,'bytes':ZIP.stat().st_size,
+    'parts':[{'filename':head.name,'bytes':head.stat().st_size}, {'model':True,'bytes':info.file_size}, {'filename':tail.name,'bytes':tail.stat().st_size}]},indent=2)+'\n')
 print(json.dumps({'app':str(APP),'zip':str(ZIP),'sha256':sha}))

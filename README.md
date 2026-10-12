@@ -6,12 +6,12 @@ A self-contained, fully local Mac app that shortens descriptions to 110 characte
 
 ## Use
 
-1. Unzip the download and drag **Description Shortener V1.0.app** to Applications.
+1. Unzip the download and drag **Description Shortener V1.1.app** to Applications.
 2. Open the app. Paste one description per line, or choose/drop a file.
 3. Click **Shorten description** or **Shorten & save copy**.
 4. Copy the text or use the saved file. Review details lists changed descriptions and any blocked locations.
 
-V1.0 is ad-hoc signed, not Apple notarized. On first launch, macOS may require approving the app in System Settings → Privacy & Security → Open Anyway. This does not require disabling Gatekeeper. Developer ID signing is required for a future notarized release.
+V1.1 is ad-hoc signed, not Apple notarized. On first launch, macOS may require approving the app in System Settings → Privacy & Security → Open Anyway. This does not require disabling Gatekeeper. Developer ID signing is required for a future notarized release.
 
 ## Supported input
 
@@ -29,15 +29,17 @@ The app inspects selected files without a written prompt. It never overwrites or
 
 ## Rules and verification
 
-Every returned description is checked for the 110-character limit, em dashes, terminal punctuation, and numeric changes. A separate local-model pass checks complete sentences, equivalent meaning and close wording. It does not intentionally add claims or marketing language. These semantic checks are probabilistic, so review changed wording before use.
+Every returned description is checked for the 110-character limit, em dashes, terminal punctuation, and numeric changes. The rules and a soft word budget are supplied to the local model before drafting. A conservative whole-phrase/unit pass may compact an overlong draft without slicing text. Invalid drafts receive specific revision feedback; a separate local-model pass checks complete sentences, equivalent meaning and close wording. The model stays loaded while the app is open, and checked descriptions are cached in memory for faster repeat runs. It does not intentionally add claims or marketing language. These semantic checks are probabilistic, so review changed wording before use.
 
-Some inputs cannot retain all details within 110 characters. If any selected description fails after retries, file export is blocked and the app lists its location. Resolve those source descriptions and run again. The app does not truncate, silently discard facts, or put error messages into description cells.
+Incidental narrative enjoyment may be omitted while the main meaning and material facts remain. Product attributes, names, specifications and quantities are protected.
+
+Some inputs cannot retain all material facts within 110 characters. If any selected description fails after retries, file export is blocked and the app lists its location. Resolve those source descriptions and run again. The app does not truncate, silently discard facts, or put error messages into description cells.
 
 Long identifier/name/title/link columns are excluded when identifiable. Generic long prose columns are selected by best judgment. Hidden sheets are included; formulas, blank cells and numeric values are left alone.
 
 ## Requirements and privacy
 
-Apple Silicon (M1 or newer), macOS 14 or newer, 8 GB RAM minimum; 16 GB recommended. Allow roughly 4 GB free space during installation. Tested on an Apple Silicon Mac running macOS 26.4; older supported macOS versions are not independently tested.
+Apple Silicon (M1 or newer), macOS 14 or newer, 16 GB RAM minimum. The bundled Gemma model is about 7 GB. Allow roughly 25 GB free space during installation. Tested on an Apple Silicon Mac running macOS 26.4; older supported macOS versions are not independently tested.
 
 Processing is offline. The bundled engine listens only on a random localhost port with a per-run random key. There are no analytics, remote model calls, or persistent input logs. Temporary conversion files are removed after processing. Inputs and outputs are not uploaded. Project/license links open externally when clicked.
 
