@@ -16,7 +16,8 @@ def request(data):
             print(json.dumps({'request':data['request_id'],'seconds':round(time.monotonic()-started,2),'backend':event.get('backend'),'counts':event.get('counts')}),flush=True)
             return event
 try:
-    assert request({'mode':'warm','request_id':'warm'})['backend']=='cpu'
+    expected_backend='metal' if sys.platform=='darwin' else 'cpu'
+    assert request({'mode':'warm','request_id':'warm'})['backend']==expected_backend
     cases=json.loads((ROOT/'benchmarks/cases.json').read_text())
     # Generation, material detail retention, planned action, and numeric/negation checks.
     for case in cases:
@@ -62,4 +63,4 @@ try:
                             if text:assert len(text)<=110
 finally:
     p.stdin.close();p.wait(timeout=30)
-print('Packaged CPU model: 11 cases, limit changes, cache isolation, XLSX/DOCX/CSV/TXT preservation and clean shutdown passed.',flush=True)
+print('Packaged model: 11 cases, limit changes, cache isolation, XLSX/DOCX/CSV/TXT preservation and clean shutdown passed.',flush=True)
