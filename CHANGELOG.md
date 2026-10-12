@@ -1,5 +1,13 @@
 # Changelog
 
+## V1.3
+
+- Add Windows x64 and Ubuntu Linux x64 desktop preview builds with the same pinned local model and Python shortening engine.
+- Bundle an Electron interface, CPU runtime and optional Vulkan runtime; fall back to CPU when GPU startup fails.
+- Add Windows process cleanup and UTF-8 helper communication.
+- Export safely to filesystems without hard-link support.
+- Build and test the actual packaged helpers on Windows and Ubuntu CI runners. GPU support remains unverified.
+
 ## V1.2
 
 - Add fully local browser shortening on GitHub Pages while retaining the downloadable Mac app.

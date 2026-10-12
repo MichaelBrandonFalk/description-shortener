@@ -1,6 +1,8 @@
 """Offline shortening and loss-minimizing Office/CSV file editing."""
 from __future__ import annotations
 import atexit
+import errno
+import shutil
 import csv
 import io
 import json
@@ -116,6 +118,8 @@ class LocalModel:
         self.resources = resources
         self.model_path = model_path or resources / 'model.gguf'
         self.process = None
+        self.close_job = None
+        self.backend = 'metal' if sys.platform == 'darwin' else 'cpu'
         self.key = secrets.token_hex(24)
         self.cache = {}
         atexit.register(self.close)
@@ -123,27 +127,48 @@ class LocalModel:
     def start(self):
         if self.process and self.process.poll() is None: return
         if self.process: self.close()
-        with socket.socket() as sock:
-            sock.bind(('127.0.0.1', 0))
-            port = sock.getsockname()[1]
-        self.url = f'http://127.0.0.1:{port}'
-        server = self.resources / 'llama' / 'llama-server'
-        model = self.model_path
-        if not server.is_file() or not model.is_file():
-            raise RuntimeError('The bundled model or engine is missing. Reinstall the complete app.')
-        self.process = subprocess.Popen([str(server), '-m', str(model), '--host', '127.0.0.1',
-            '--port', str(port), '--api-key', self.key, '-c', '8192', '-ngl', '99',
-            '--parallel', '1', '--jinja', '--reasoning', 'off', '--reasoning-format', 'deepseek', '--no-webui'],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        for _ in range(180):
-            if self.process.poll() is not None: raise RuntimeError('The local engine could not start. Check available memory.')
+        executable = 'llama-server.exe' if os.name == 'nt' else 'llama-server'
+        if sys.platform == 'darwin':
+            choices = [('metal', self.resources / 'llama' / executable)]
+        else:
+            choices = [('vulkan', self.resources / 'llama' / 'vulkan' / executable),
+                       ('cpu', self.resources / 'llama' / 'cpu' / executable)]
+            if os.environ.get('DESCRIPTION_SHORTENER_BACKEND') == 'cpu': choices = choices[-1:]
+        last_error = 'The bundled model or engine is missing. Reinstall the complete app.'
+        for backend, server in choices:
+            if not server.is_file() or not self.model_path.is_file(): continue
+            with socket.socket() as sock:
+                sock.bind(('127.0.0.1', 0)); port = sock.getsockname()[1]
+            self.url = f'http://127.0.0.1:{port}'
+            args = [str(server), '-m', str(self.model_path), '--host', '127.0.0.1',
+                '--port', str(port), '--api-key', self.key, '-c', '8192' if backend == 'metal' else '4096',
+                '-ngl', '0' if backend == 'cpu' else '99', '--parallel', '1', '--jinja',
+                '--reasoning', 'off', '--reasoning-format', 'deepseek', '--no-webui']
+            if backend != 'metal': args += ['-b', '128', '-ub', '64']
             try:
-                req = urllib.request.Request(self.url + '/health', headers={'Authorization': 'Bearer ' + self.key})
-                with urllib.request.urlopen(req, timeout=1) as response:
-                    if response.status == 200: return
-            except (OSError, ValueError): pass
-            time.sleep(0.5)
-        raise RuntimeError('The local engine took too long to load. Please try again.')
+                self.process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+            except OSError:
+                last_error = 'The bundled engine could not launch. Check this computer’s supported architecture.'
+                continue
+            if os.name == 'nt':
+                from windows_job import attach_job
+                try: self.close_job = attach_job(self.process.pid)
+                except OSError:
+                    self.close()
+                    raise RuntimeError('The engine could not establish reliable process cleanup on this computer.')
+            self.backend = backend
+            for _ in range(180):
+                if self.process.poll() is not None:
+                    last_error = 'The local engine could not start. Check available memory.'; break
+                try:
+                    req = urllib.request.Request(self.url + '/health', headers={'Authorization': 'Bearer ' + self.key})
+                    with urllib.request.urlopen(req, timeout=1) as response:
+                        if response.status == 200: return
+                except (OSError, ValueError): pass
+                time.sleep(0.5)
+            self.close()
+        raise RuntimeError(last_error)
 
     def close(self):
         if self.process is not None:
@@ -153,6 +178,8 @@ class LocalModel:
                 self.process.kill()
                 self.process.wait()
             self.process = None
+        if self.close_job:
+            self.close_job(); self.close_job = None
 
     def ask(self, system, payload, schema=None):
         self.start()
@@ -438,7 +465,21 @@ def process_file(source, destination, model, progress=lambda *args: None):
     try:
         document.write(temporary)
         # Exclusive destination creation avoids accidentally replacing a file made while processing.
-        os.link(temporary, destination)
+        try:
+            os.link(temporary, destination)
+        except OSError as error:
+            if isinstance(error, FileExistsError): raise
+            # FAT/exFAT and some network drives do not support hard links.
+            if error.errno not in (errno.EPERM, errno.EACCES, errno.EXDEV, errno.ENOSYS, errno.EOPNOTSUPP): raise
+            created = False
+            try:
+                with open(destination, 'xb') as output:
+                    created = True
+                    with open(temporary, 'rb') as input_file: shutil.copyfileobj(input_file, output)
+                    output.flush(); os.fsync(output.fileno())
+            except BaseException:
+                if created: destination.unlink(missing_ok=True)
+                raise
     finally:
         Path(temporary).unlink(missing_ok=True)
     return {'ok': True, 'path': str(destination), 'checked': len(document.items), 'changed': len(edits), 'edits': edits}
@@ -447,7 +488,7 @@ def process_file(source, destination, model, progress=lambda *args: None):
 def handle_request(request, model, emit):
     if request.get('mode') == 'warm':
         model.start()
-        emit({'event': 'ready', 'ok': True})
+        emit({'event': 'ready', 'ok': True, 'backend': model.backend})
         return
     model.limit = validate_limit(request.get('character_limit', LIMIT))
     if request.get('mode') == 'text':
@@ -474,6 +515,8 @@ def handle_request(request, model, emit):
 
 
 def main():
+    if os.name == 'nt':
+        sys.stdin.reconfigure(encoding='utf-8'); sys.stdout.reconfigure(encoding='utf-8')
     model = LocalModel(Path(sys.argv[1]))
     def stop(*_):
         model.close()

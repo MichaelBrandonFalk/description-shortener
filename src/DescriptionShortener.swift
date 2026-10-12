@@ -3,7 +3,7 @@ import AppKit
 import UniformTypeIdentifiers
 import PDFKit
 
-let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2"
+let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.3"
 let ink = Color(red: 0.12, green: 0.22, blue: 0.24)
 let teal = Color(red: 0.10, green: 0.40, blue: 0.37)
 let paper = Color(red: 0.965, green: 0.961, blue: 0.941)

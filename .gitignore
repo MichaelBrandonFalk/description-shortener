@@ -10,3 +10,5 @@ __pycache__/
 # Publish the small browser runtime, never native model/vendor weights.
 !docs/browser/vendor/
 !docs/browser/vendor/**
+
+node_modules/

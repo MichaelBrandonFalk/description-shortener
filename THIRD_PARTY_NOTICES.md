@@ -20,3 +20,7 @@ The GitHub Pages browser app additionally vendors wllama 3.8.1 (MIT), hash-wasm 
 - [wllama](https://github.com/ngxson/wllama), WebAssembly/WebGPU bindings for llama.cpp.
 - [hash-wasm](https://github.com/Daninet/hash-wasm), incremental SHA-256 verification.
 - [fflate](https://github.com/101arrowz/fflate), local XLSX and DOCX ZIP handling.
+
+## Windows and Linux desktop previews
+
+The desktop previews use [Electron 44.7.0](https://github.com/electron/electron) (MIT) and its bundled Chromium/Node.js notices. Their included `LICENSE` and `LICENSES.chromium.html` files ship with the desktop runtime. Packaging uses [@electron/packager 20.3.0](https://github.com/electron/packager) (BSD-2-Clause). These previews bundle the same Google model and Python processing dependencies as the Mac build, plus official llama.cpp b11531 CPU and Vulkan binaries.

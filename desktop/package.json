@@ -1,0 +1,10 @@
+{
+  "name": "description-shortener-desktop",
+  "version": "1.3.0",
+  "private": true,
+  "main": "main.cjs",
+  "description": "Fully local description shortening for Windows and Linux",
+  "author": "Michael Brandon Falk",
+  "license": "MIT",
+  "devDependencies": { "electron": "44.7.0", "@electron/packager": "20.3.0" }
+}
