@@ -1,17 +1,19 @@
 # Description Shortener
 
-A self-contained, fully local Mac app that shortens descriptions to 110 characters or fewer, including spaces. No account, API key, Python installation, or model download is needed after installing the app.
+A self-contained, fully local Mac app that shortens descriptions to a chosen maximum character count, including spaces and punctuation. The default and minimum are 110. No account, API key, Python installation, or model download is needed after installing the app.
 
 [Download page](https://michaelbrandonfalk.github.io/description-shortener/) · [Versioned releases](https://github.com/MichaelBrandonFalk/description-shortener/releases) · [Open-source research](docs/research.md)
 
 ## Use
 
-1. Unzip the download and drag **Description Shortener V1.1.app** to Applications.
+1. Unzip the download and drag **Description Shortener V1.2.app** to Applications.
 2. Open the app. Paste one description per line, or choose/drop a file.
 3. Click **Shorten description** or **Shorten & save copy**.
 4. Copy the text or use the saved file. Review details lists changed descriptions and any blocked locations.
 
-V1.1 is ad-hoc signed, not Apple notarized. On first launch, macOS may require approving the app in System Settings → Privacy & Security → Open Anyway. This does not require disabling Gatekeeper. Developer ID signing is required for a future notarized release.
+V1.2 is ad-hoc signed, not Apple notarized. On first launch, macOS may require approving the app in System Settings → Privacy & Security → Open Anyway. This does not require disabling Gatekeeper. Developer ID signing is required for a future notarized release.
+
+Use **Settings** to choose a whole-number maximum of at least 110. Spaces, punctuation and Unicode code points count toward the total. Changing the setting clears previous results and separates the model cache by limit.
 
 ## Supported input
 
@@ -29,11 +31,11 @@ The app inspects selected files without a written prompt. It never overwrites or
 
 ## Rules and verification
 
-Every returned description is checked for the 110-character limit, em dashes, terminal punctuation, and numeric changes. The rules and a soft word budget are supplied to the local model before drafting. A conservative whole-phrase/unit pass may compact an overlong draft without slicing text. Invalid drafts receive specific revision feedback; a separate local-model pass checks complete sentences, equivalent meaning and close wording. The model stays loaded while the app is open, and checked descriptions are cached in memory for faster repeat runs. It does not intentionally add claims or marketing language. These semantic checks are probabilistic, so review changed wording before use.
+Every returned description is checked against the chosen character limit, em dashes, terminal punctuation, and numeric changes. The rules and a soft word budget are supplied to the local model before drafting. A conservative whole-phrase/unit pass may compact an overlong draft without slicing text. Invalid drafts receive specific revision feedback; a separate local-model pass checks complete sentences, equivalent meaning and close wording. The model stays loaded while the app is open, and checked descriptions are cached in memory for faster repeat runs. It does not intentionally add claims or marketing language. These semantic checks are probabilistic, so review changed wording before use.
 
 Incidental narrative enjoyment may be omitted while the main meaning and material facts remain. Product attributes, names, specifications and quantities are protected.
 
-Some inputs cannot retain all material facts within 110 characters. If any selected description fails after retries, file export is blocked and the app lists its location. Resolve those source descriptions and run again. The app does not truncate, silently discard facts, or put error messages into description cells.
+Some inputs cannot retain all material facts within the selected character limit. If any selected description fails after retries, file export is blocked and the app lists its location. Resolve those source descriptions and run again. The app does not truncate, silently discard facts, or put error messages into description cells.
 
 Long identifier/name/title/link columns are excluded when identifiable. Generic long prose columns are selected by best judgment. Hidden sheets are included; formulas, blank cells and numeric values are left alone.
 
@@ -67,3 +69,11 @@ See [third-party notices](THIRD_PARTY_NOTICES.md) and [research](docs/research.m
 The public download page is hosted on GitHub Pages from `main:/docs`. Edit `docs/index.html` and push to main to publish page updates. Website hosting corrections do not change the Mac binary or its immutable versioned release.
 
 The complete V1.1 ZIP is about 7 GB, so its Download button uses the existing streaming endpoint to deliver one self-contained ZIP. The public page, source code and release history are on GitHub. Keep that endpoint available for existing downloads.
+
+## Use in the browser
+
+[Open the browser app](https://michaelbrandonfalk.github.io/description-shortener/browser/). It uses the same pinned Gemma 4 12B model on your own GPU through wllama. The first use downloads about 7 GB from the official model URL; SHA-256 is checked before loading. The model is stored in this browser’s private file storage. Clearing browser data removes it. Use a WebGPU-capable browser and 16 GB RAM or more. Loading and processing depend on the browser and device; the native Mac app is faster on the tested Mac.
+
+Paste text or select XLSX, CSV, DOCX or UTF-8 TXT files. No text or document is uploaded for inference. The browser saves a new file and retains sheet names, formulas, non-description values and untouched Office package content. Complex Word fields or tracked changes need review; legacy document formats and PDF use the Mac app. Browser CSV quoting may normalize, while delimiter, BOM, line endings, order and other field values are retained.
+
+Run `node --test tests/browser.test.mjs` for browser counting, limit, cache and CSV checks. `scripts/export_browser_rules.py` keeps the model instructions and JSON schemas synchronized with the Python engine. `scripts/prepare_browser_model.py` verifies GGUF shard metadata against the pinned original weights.

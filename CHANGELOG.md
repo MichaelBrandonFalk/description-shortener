@@ -1,5 +1,13 @@
 # Changelog
 
+## V1.2
+
+- Add fully local browser shortening on GitHub Pages while retaining the downloadable Mac app.
+- Add saved Settings for a maximum character count, default and minimum 110, including spaces and punctuation.
+- Apply the selected limit to drafting, revision feedback, validation and file export; isolate cached results by limit.
+- Load the same Gemma 4 12B model in the browser with WebGPU and a verified local model cache.
+- Process pasted text, XLSX, CSV, DOCX and TXT locally in the browser.
+
 ## Website hosting correction
 
 - Publish the public download page on GitHub Pages, matching the other app download pages.

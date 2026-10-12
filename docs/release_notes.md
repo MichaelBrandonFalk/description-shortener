@@ -1,14 +1,12 @@
-Description Shortener V1.1 simplifies the interface and improves local shortening with the bundled Gemma 4 12B model.
+Description Shortener V1.2 adds Settings and fully local browser processing while keeping the self-contained Mac download.
 
-- Clear, high-contrast Paste text and Process a file controls.
-- Removed the tagline and extra rule badges; simplified the download page.
-- Word-budget guidance and instructions apply before generation, with internal revision feedback and meaning review.
-- No forced character cutoff during generation, avoiding truncated sentences.
-- Keeps the model loaded while the app is open and caches checked results in memory.
-- Clear review messages when a valid result cannot be produced.
+- Choose the maximum character count in Settings. Default and minimum: 110. Spaces, punctuation and every other character count.
+- The selected limit applies to model instructions, revision passes, verification and file exports. Cached results are separated by limit.
+- Use the same Gemma 4 12B model in a WebGPU-capable browser on your device, with a verified local model cache.
+- Browser inputs: pasted text, XLSX, CSV, DOCX and UTF-8 TXT. The Mac app retains its additional document support.
 
-[Public GitHub download page](https://michaelbrandonfalk.github.io/description-shortener/) · [Download the complete Mac ZIP](https://description-shortener.great-americ-8514.chatgpt.site/download/Description-Shortener-V1.1-Apple-Silicon.zip), unzip it, and drag the app to Applications. Apple Silicon, macOS 14 or newer, 16 GB RAM; about 7 GB download; no account, API key, or model installation needed.
+[Public GitHub download page](https://michaelbrandonfalk.github.io/description-shortener/) · [Use in browser](https://michaelbrandonfalk.github.io/description-shortener/browser/) · [Complete Mac ZIP](https://description-shortener.great-americ-8514.chatgpt.site/download/Description-Shortener-V1.2-Apple-Silicon.zip).
 
-This build is ad-hoc signed and is not Apple notarized. First launch may require Privacy & Security → Open Anyway. Review changed wording before use; semantic checks use a local language model.
+Apple Silicon, macOS 14+, 16 GB RAM; about 7 GB download. No account, API key or separate model installation. This Mac build is ad-hoc signed, not Apple notarized; first launch may require Privacy & Security → Open Anyway.
 
-The ZIP is served as one self-contained download from the download page. The `.bin` assets below are distribution segments, not standalone installers. The published checksum verifies the complete ZIP. Older versions remain available.
+The `.bin` assets are distribution segments, not standalone installers. Use the complete ZIP link above. Its SHA-256 is in the checksum asset. Older releases remain available.

@@ -89,10 +89,20 @@ class ReviewNeeded(Exception):
     pass
 
 
-def hard_errors(original: str, candidate: str) -> list[str]:
+def validate_limit(value):
+    if type(value) is not int or value < 110:
+        raise ValueError("Character limit must be a whole number of at least 110, including spaces and punctuation.")
+    return value
+
+
+def failure_message(limit):
+    return FAILURE_MESSAGE.replace("110 characters", f"{limit} characters")
+
+
+def hard_errors(original: str, candidate: str, limit: int = LIMIT) -> list[str]:
     errors = []
     if not candidate.strip(): errors.append('No meaning-preserving result was found.')
-    if len(candidate) > LIMIT: errors.append(f'{len(candidate)} characters exceeds 110.')
+    if len(candidate) > limit: errors.append(f'{len(candidate)} characters exceeds {limit}.')
     if '\u2014' in candidate: errors.append('Contains an em dash.')
     if not re.search(r'[.!?][\"\u201d\u2019\']?$', candidate) or re.search(r'(\.{2,}|\u2026)[\"\u201d\u2019\']?$', candidate):
         errors.append('Must end with a complete sentence, without an ellipsis.')
@@ -101,7 +111,8 @@ def hard_errors(original: str, candidate: str) -> list[str]:
 
 
 class LocalModel:
-    def __init__(self, resources: Path, model_path: Path | None = None):
+    def __init__(self, resources: Path, model_path: Path | None = None, limit: int = LIMIT):
+        self.limit = validate_limit(limit)
         self.resources = resources
         self.model_path = model_path or resources / 'model.gguf'
         self.process = None
@@ -146,21 +157,22 @@ class LocalModel:
     def ask(self, system, payload, schema=None):
         self.start()
         if system == SYSTEM:
-            system += f"\nFor this draft, aim for at most {payload.get('word_budget_guidance', 21)} words. The hard character limit is 110. Omit optional enjoyment; retain every material fact."
+            system = system.replace("110 characters", f"{self.limit} characters")
+            system += f"\nFor this draft, aim for at most {payload.get('word_budget_guidance', 21)} words. The hard character limit is {self.limit}. Omit optional enjoyment; retain every material fact."
         messages = [{'role': 'system', 'content': system},
                     {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}]
         if payload.get('previous_candidate'):
             messages = [{'role': 'system', 'content': system},
-                        {'role': 'user', 'content': json.dumps({'description': payload['description'], 'limit_including_spaces': LIMIT, 'word_budget_guidance': payload.get('word_budget_guidance')})},
+                        {'role': 'user', 'content': json.dumps({'description': payload['description'], 'limit_including_spaces': self.limit, 'word_budget_guidance': payload.get('word_budget_guidance')})},
                         {'role': 'assistant', 'content': json.dumps({'text': payload['previous_candidate']})},
-                        {'role': 'user', 'content': f"Revise that draft. It has {len(payload['previous_candidate'])} characters. Maximum: {LIMIT}. "
+                        {'role': 'user', 'content': f"Revise that draft. It has {len(payload['previous_candidate'])} characters. Maximum: {self.limit}. "
                             + payload.get('previous_issue', '') + ' '
                             + f" Aim for about {payload.get('word_budget_guidance', 21)} words without omitting material facts. "
                             + payload.get('revision_instruction', '')
                             + ' Remove redundant infinitive wording where equivalent (wanted to have more room -> wanted more room). Return a complete sentence in JSON.'}]
         body = {'messages': messages,
                 'temperature': 0.2 if payload.get('previous_candidate') else 0.1,
-                'seed': 42 + 17 * payload.get('attempt', 0) + len(payload.get('previous_candidate', '')), 'max_tokens': 384 if system == REVIEW else 256, 'cache_prompt': True,
+                'seed': 42 + 17 * payload.get('attempt', 0) + len(payload.get('previous_candidate', '')), 'max_tokens': 384 if system == REVIEW else min(4096, max(256, self.limit * 2)), 'cache_prompt': True,
                 'response_format': {'type': 'json_object'} if schema is None else {'type': 'json_schema', 'json_schema': {'name': 'result', 'strict': True, 'schema': schema}},
                 'chat_template_kwargs': {'enable_thinking': False}}
         req = urllib.request.Request(self.url + '/v1/chat/completions',
@@ -173,13 +185,14 @@ class LocalModel:
             raise ReviewNeeded('The local model returned an incomplete response. This description needs review.') from None
 
     def shorten(self, original):
-        if original in self.cache: return self.cache[original]
+        cache_key = (self.limit, original)
+        if cache_key in self.cache: return self.cache[cache_key]
         if len(original) > 12000:
             raise ReviewNeeded('This section is too long to verify as one description. Split it into individual descriptions.')
         # Even short fragments need a sentence and meaning check.
         reason = ''
         previous = ''
-        word_budget = min(21, max(12, len(original.split())))
+        word_budget = min(max(21, self.limit // 5), max(12, len(original.split())))
         compact = original.strip()
         for phrase, replacement in [('in order to', 'to'), ('due to the fact that', 'because'),
                 ('does not contain', 'contains no'), ('is manufactured in', 'is made in'),
@@ -187,29 +200,29 @@ class LocalModel:
                 ('in the event that', 'if')]:
             compact = re.sub(r'\b' + re.escape(phrase) + r'\b', replacement, compact, flags=re.I)
         for attempt in range(3):
-            candidate = compact if attempt == 0 and not hard_errors(original, compact) else None
+            candidate = compact if attempt == 0 and not hard_errors(original, compact, self.limit) else None
             if candidate is None:
-                data = self.ask(SYSTEM, {'description': original, 'limit_including_spaces': LIMIT, 'previous_candidate': previous, 'previous_characters': len(previous), 'previous_issue': reason, 'word_budget_guidance': word_budget, 'attempt': attempt, 'revision_instruction': 'Write a distinctly different, more compact complete sentence. Use compound verbs; after a purchase verb, an indefinite article can replace a redundant possessive. Use the full 110-character budget.' if previous else 'Keep every key detail using compact grammar.'}, TEXT_SCHEMA)
+                data = self.ask(SYSTEM, {'description': original, 'limit_including_spaces': self.limit, 'previous_candidate': previous, 'previous_characters': len(previous), 'previous_issue': reason, 'word_budget_guidance': word_budget, 'attempt': attempt, 'revision_instruction': f'Write a distinctly different, more compact complete sentence. Use compound verbs; after a purchase verb, an indefinite article can replace a redundant possessive. Use the full {self.limit}-character budget.' if previous else 'Keep every key detail using compact grammar.'}, TEXT_SCHEMA)
                 candidate = data.get('text', '')
                 if not isinstance(candidate, str): candidate = ''
                 candidate = candidate.strip()
-                if len(candidate) > LIMIT:
+                if len(candidate) > self.limit:
                     candidate = compact_draft(candidate)
             if not candidate:
-                raise ReviewNeeded(FAILURE_MESSAGE)
+                raise ReviewNeeded(failure_message(self.limit))
             previous = candidate
-            errors = hard_errors(original, candidate)
+            errors = hard_errors(original, candidate, self.limit)
             if errors:
-                if len(candidate) > LIMIT:
-                    word_budget = max(12, int(len(candidate.split()) * (LIMIT - 1) / len(candidate)))
+                if len(candidate) > self.limit:
+                    word_budget = max(12, int(len(candidate.split()) * (self.limit - 1) / len(candidate)))
                 reason = ' '.join(errors) + ' Use shorter equivalent vocabulary and compact grammar. Preserve all material facts and the source tense.'
                 continue
             verdict = self.ask(REVIEW, {'original': original, 'candidate': candidate}, REVIEW_SCHEMA)
             if all(verdict.get(k) is True for k in ('equivalent', 'complete_sentences', 'close_wording')):
-                self.cache[original] = candidate
+                self.cache[cache_key] = candidate
                 return candidate
             reason = verdict.get('issue') or 'The draft changed meaning, omitted details, was not a complete sentence, or changed wording too much.'
-        raise ReviewNeeded(FAILURE_MESSAGE)
+        raise ReviewNeeded(failure_message(self.limit))
 
 
 @dataclass
@@ -411,7 +424,7 @@ def process_file(source, destination, model, progress=lambda *args: None):
         progress(index, len(document.items), item.location)
         try:
             result = model.shorten(item.original)
-            errors = hard_errors(item.original, result)
+            errors = hard_errors(item.original, result, getattr(model, 'limit', LIMIT))
             if errors: raise ReviewNeeded(' '.join(errors))
             if result != item.original:
                 item.apply(result)
@@ -436,17 +449,22 @@ def handle_request(request, model, emit):
         model.start()
         emit({'event': 'ready', 'ok': True})
         return
+    model.limit = validate_limit(request.get('character_limit', LIMIT))
     if request.get('mode') == 'text':
         originals = [line for line in request.get('text', '').splitlines() if line.strip()]
         if not originals: raise ValueError('Paste a description first.')
         results, issues = [], []
         for index, original in enumerate(originals, 1):
             emit({'event': 'progress', 'current': index, 'total': len(originals), 'location': f'Description {index}'})
-            try: results.append(model.shorten(original))
+            try:
+                result = model.shorten(original)
+                errors = hard_errors(original, result, model.limit)
+                if errors: raise ReviewNeeded(' '.join(errors))
+                results.append(result)
             except ReviewNeeded as exc:
                 issues.append({'location': f'Description {index}', 'reason': str(exc), 'original': original})
         if issues:
-            emit({'event': 'result', 'ok': False, 'error': FAILURE_MESSAGE, 'issues': issues})
+            emit({'event': 'result', 'ok': False, 'error': failure_message(model.limit), 'issues': issues})
         else:
             emit({'event': 'result', 'ok': True, 'text': '\n'.join(results), 'counts': [len(x) for x in results]})
     else:

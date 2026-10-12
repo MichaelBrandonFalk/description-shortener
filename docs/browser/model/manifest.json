@@ -1,0 +1,112 @@
+{
+  "url": "https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-gguf/resolve/29d097773436b69ff9feafd636ab4cf873786537/gemma-4-12b-it-qat-q4_0.gguf",
+  "bytes": 6975879296,
+  "sha256": "93567e57a8fe10b23569b9d9ec38cd005deedf71e29477c421a4b83f418a538b",
+  "shards": [
+    {
+      "name": "gemma4-12b-00001-of-00015.gguf",
+      "header": "gemma4-12b-00001-of-00015.gguf.header",
+      "offset": 15823488,
+      "bytes": 16384,
+      "sha256": "33f3d11ea277a0a88cb38bf56623a49e3ca66af6d4d4f57d20e056cff9f6fd5b"
+    },
+    {
+      "name": "gemma4-12b-00002-of-00015.gguf",
+      "header": "gemma4-12b-00002-of-00015.gguf.header",
+      "offset": 15839872,
+      "bytes": 825753600,
+      "sha256": "23459b4ac87bd29290a246f36e5ff76d54c8b68094200c8f01ac59d34839f5cc"
+    },
+    {
+      "name": "gemma4-12b-00003-of-00015.gguf",
+      "header": "gemma4-12b-00003-of-00015.gguf.header",
+      "offset": 841593472,
+      "bytes": 508993664,
+      "sha256": "1cee9a78c10182ab09a8a2992bce96b2866c3302ffae439226ec306195ce7329"
+    },
+    {
+      "name": "gemma4-12b-00004-of-00015.gguf",
+      "header": "gemma4-12b-00004-of-00015.gguf.header",
+      "offset": 1350587136,
+      "bytes": 510068864,
+      "sha256": "40c445412e98acfac5407e36494fb35b9b3007e8a5a3fdb1d86e6a630654b3e7"
+    },
+    {
+      "name": "gemma4-12b-00005-of-00015.gguf",
+      "header": "gemma4-12b-00005-of-00015.gguf.header",
+      "offset": 1860656000,
+      "bytes": 481300576,
+      "sha256": "989f4eeed83198f894f7fbf4924d8e8b5fb5a529af95bf14f9e8dadc27033263"
+    },
+    {
+      "name": "gemma4-12b-00006-of-00015.gguf",
+      "header": "gemma4-12b-00006-of-00015.gguf.header",
+      "offset": 2341956576,
+      "bytes": 504553600,
+      "sha256": "2c2936e05545a273bbdd431e30b786523fad54916d789b822846e6c7a6564f46"
+    },
+    {
+      "name": "gemma4-12b-00007-of-00015.gguf",
+      "header": "gemma4-12b-00007-of-00015.gguf.header",
+      "offset": 2846510176,
+      "bytes": 481315968,
+      "sha256": "9d2e663cdfb389465f6da5695b9cb1570d3360304ac23e880895c6fad5cce81b"
+    },
+    {
+      "name": "gemma4-12b-00008-of-00015.gguf",
+      "header": "gemma4-12b-00008-of-00015.gguf.header",
+      "offset": 3327826144,
+      "bytes": 481331328,
+      "sha256": "fba94b66eff5fe44e18d2cc07997669d2df1e882083cd528a236137463e98e9d"
+    },
+    {
+      "name": "gemma4-12b-00009-of-00015.gguf",
+      "header": "gemma4-12b-00009-of-00015.gguf.header",
+      "offset": 3809157472,
+      "bytes": 504553600,
+      "sha256": "6315a8639552a7ccf8308909d8c6ce9fd80d295b9011a237e8b946689614ed93"
+    },
+    {
+      "name": "gemma4-12b-00010-of-00015.gguf",
+      "header": "gemma4-12b-00010-of-00015.gguf.header",
+      "offset": 4313711072,
+      "bytes": 510085248,
+      "sha256": "48e85cc790d76fc07fc41e47b326b754d7c42f79fbb130348afbbd10aea8dbb4"
+    },
+    {
+      "name": "gemma4-12b-00011-of-00015.gguf",
+      "header": "gemma4-12b-00011-of-00015.gguf.header",
+      "offset": 4823796320,
+      "bytes": 501235840,
+      "sha256": "7201550226b02b1f0b7181ded1ff9c9d6ebcd1fd462192cd7cbfcb0f1af3090d"
+    },
+    {
+      "name": "gemma4-12b-00012-of-00015.gguf",
+      "header": "gemma4-12b-00012-of-00015.gguf.header",
+      "offset": 5325032160,
+      "bytes": 508978304,
+      "sha256": "096ae36393055fb414c12d953e0be20bf0dddf9e9f4a397f19bf2244468d8bf5"
+    },
+    {
+      "name": "gemma4-12b-00013-of-00015.gguf",
+      "header": "gemma4-12b-00013-of-00015.gguf.header",
+      "offset": 5834010464,
+      "bytes": 505661568,
+      "sha256": "fbbe4698de6d2b6e31847e285a37eb5e157449c9835e9c70cbcd88aca768645b"
+    },
+    {
+      "name": "gemma4-12b-00014-of-00015.gguf",
+      "header": "gemma4-12b-00014-of-00015.gguf.header",
+      "offset": 6339672032,
+      "bytes": 501236864,
+      "sha256": "fed3acccb51b56e5f8d782750fe1735a32a4995a5ee08a01aa9c64a44b7aa009"
+    },
+    {
+      "name": "gemma4-12b-00015-of-00015.gguf",
+      "header": "gemma4-12b-00015-of-00015.gguf.header",
+      "offset": 6840908896,
+      "bytes": 134970400,
+      "sha256": "f4f502563089d17ef338fc5660946e57024e29f008c9f35be4c7873b4ffacf6a"
+    }
+  ]
+}

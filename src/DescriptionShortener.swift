@@ -3,12 +3,18 @@ import AppKit
 import UniformTypeIdentifiers
 import PDFKit
 
-let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1"
+let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2"
 let ink = Color(red: 0.12, green: 0.22, blue: 0.24)
 let teal = Color(red: 0.10, green: 0.40, blue: 0.37)
 let paper = Color(red: 0.965, green: 0.961, blue: 0.941)
 
 @MainActor final class Shortener: ObservableObject {
+    @Published var characterLimit = max(110, UserDefaults.standard.object(forKey: "characterLimit") as? Int ?? 110) {
+        didSet {
+            UserDefaults.standard.set(characterLimit, forKey: "characterLimit")
+            output = ""; status = ""; issue = ""; review = ""; saved = nil
+        }
+    }
     @Published var mode = 0
     @Published var input = ""
     @Published var output = ""
@@ -114,6 +120,7 @@ let paper = Color(red: 0.965, green: 0.961, blue: 0.941)
                 request = ["mode": "file", "source": processingSource.path, "destination": processingDestination.path]
             }
             try ensureWorker()
+            request["character_limit"] = characterLimit
             request["request_id"] = id.uuidString
             try send(request)
         } catch { fail(error.localizedDescription) }
@@ -198,13 +205,13 @@ let paper = Color(red: 0.965, green: 0.961, blue: 0.941)
                         if let text = event["text"] as? String {
                             output = text
                             let counts = event["counts"] as? [Int] ?? []
-                            status = counts.count == 1 ? "\(counts.first ?? 0) / 110 characters" : "\(counts.count) descriptions checked. Each is 110 characters or fewer."
+                            status = counts.count == 1 ? "\(counts.first ?? 0) / \(characterLimit) characters" : "\(counts.count) descriptions checked. Each is \(characterLimit) characters or fewer."
                         } else {
                             saved = chosenOutput
                             let count = event["checked"] as? Int ?? 0, changed = event["changed"] as? Int ?? 0
                             status = count == 0 ? "No description fields found. An unchanged copy was saved." : "Saved. \(count) checked, \(changed) changed."
                             let edits = event["edits"] as? [[String: Any]] ?? []
-                            review = edits.map { "\($0["location"] as? String ?? "")\nOriginal: \($0["original"] as? String ?? "")\nResult: \($0["text"] as? String ?? "")\n\($0["characters"] as? Int ?? 0) / 110 characters" }.joined(separator: "\n\n")
+                            review = edits.map { "\($0["location"] as? String ?? "")\nOriginal: \($0["original"] as? String ?? "")\nResult: \($0["text"] as? String ?? "")\n\($0["characters"] as? Int ?? 0) / \(characterLimit) characters" }.joined(separator: "\n\n")
                         }
                         progress = 1; busy = false; cleanup()
                     } catch { fail(error.localizedDescription) }
@@ -223,6 +230,11 @@ let paper = Color(red: 0.965, green: 0.961, blue: 0.941)
 struct ContentView: View {
     @StateObject private var model = Shortener()
     @State private var dragOver = false
+    @State private var showSettings = false
+    @State private var limitDraft = "110"
+    private var validLimit: Int? {
+        guard let value = Int(limitDraft), value >= 110 else { return nil }; return value
+    }
     private func inputButton(_ title: String, icon: String, mode: Int) -> some View {
         Button { model.mode = mode; model.issue = ""; model.status = "" } label: {
             Label(title, systemImage: icon)
@@ -255,7 +267,10 @@ struct ContentView: View {
                 }.padding(4).background(Color.white, in: RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(ink.opacity(0.15)))
                 Spacer()
-                Text("110 characters maximum").font(.system(size: 12)).foregroundStyle(ink.opacity(0.75))
+                Text("\(model.characterLimit) characters maximum").font(.system(size: 12)).foregroundStyle(ink.opacity(0.75))
+                Button { limitDraft = String(model.characterLimit); showSettings = true } label: {
+                    Label("Settings", systemImage: "gearshape")
+                }.disabled(model.busy)
             }
             if model.mode == 0 {
                 HStack(alignment: .top, spacing: 18) {
@@ -340,6 +355,25 @@ struct ContentView: View {
             .task { model.warmUp() }
             .onOpenURL { model.accept($0) }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in model.cancel() }
+            .sheet(isPresented: $showSettings) {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Settings").font(.title2)
+                    Text("Maximum characters per description")
+                    TextField("Character limit", text: $limitDraft).textFieldStyle(.roundedBorder)
+                        .accessibilityLabel("Character limit")
+                    Text("Minimum 110. Spaces, punctuation and all other characters count toward the total.")
+                        .font(.system(size: 12)).foregroundStyle(ink.opacity(0.75))
+                    if validLimit == nil { Text("Enter a whole number of at least 110.").foregroundStyle(.red) }
+                    HStack {
+                        Button("Reset to 110") { limitDraft = "110" }
+                        Spacer()
+                        Button("Cancel") { showSettings = false }
+                        Button("Save") {
+                            if let limit = validLimit { model.characterLimit = limit; showSettings = false }
+                        }.buttonStyle(.borderedProminent).tint(teal).disabled(validLimit == nil)
+                    }
+                }.padding(25).frame(width: 440)
+            }
             .sheet(isPresented: $model.showReview) {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack { Text("Review details").font(.title2); Spacer(); Button("Done") { model.showReview = false } }

@@ -154,4 +154,46 @@ class GenerationTests(unittest.TestCase):
         self.assertNotEqual(numeric_tokens('two years'),numeric_tokens('3 years'))
         self.assertNotEqual(numeric_tokens('twenty-five parts'),numeric_tokens('twenty parts'))
 
+class LimitTests(unittest.TestCase):
+    def test_total_includes_spaces_punctuation_and_unicode(self):
+        text = "A" * 108 + " ."
+        self.assertEqual(len(text), 110)
+        self.assertFalse(hard_errors(text, text, 110))
+        self.assertTrue(hard_errors(text + "!", text + "!", 110))
+        self.assertFalse(hard_errors(text + "!", text + "!", 111))
+        text = "A" * 108 + "😀."
+        self.assertEqual(len(text), 110)
+        self.assertFalse(hard_errors(text, text, 110))
+    def test_invalid_limits_rejected(self):
+        for value in [109, 0, -1, 110.5, True, "150", None]:
+            with self.assertRaises(ValueError): validate_limit(value)
+        self.assertEqual(validate_limit(110), 110)
+        self.assertEqual(validate_limit(500), 500)
+    def test_cache_respects_limit_changes(self):
+        model = LocalModel(Path('/unused'), limit=150)
+        calls = []
+        def ask(system, payload, schema=None):
+            calls.append(payload)
+            return {'equivalent': True, 'complete_sentences': True, 'close_wording': True, 'issue': ''} if system == REVIEW else {'text': SHORT}
+        model.ask = ask
+        self.assertEqual(model.shorten(ORIGINAL), ORIGINAL)
+        model.limit = 110
+        self.assertEqual(model.shorten(ORIGINAL), SHORT)
+        self.assertGreater(len(calls), 1)
+        self.assertEqual(calls[-2]['limit_including_spaces'], 110)
+    def test_file_gate_uses_chosen_limit(self):
+        class Model:
+            limit = 150
+            def shorten(self, text): return text
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / 'in.txt'; target = Path(directory) / 'out.txt'
+            source.write_text(ORIGINAL)
+            self.assertTrue(process_file(source, target, Model())['ok'])
+            self.assertEqual(source.read_text(), target.read_text())
+    def test_invalid_request_cannot_change_model_limit(self):
+        model = LocalModel(Path('/unused'))
+        with self.assertRaises(ValueError):
+            handle_request({'mode': 'text', 'text': SHORT, 'character_limit': 109}, model, lambda _: None)
+        self.assertEqual(model.limit, 110)
+
 if __name__ == '__main__': unittest.main()

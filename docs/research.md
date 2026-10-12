@@ -23,3 +23,9 @@ V1.0 bundled Qwen3 4B. V1.1 selects Gemma 4 12B after comparing Qwen3.5 2B/4B/9B
 ## Limits
 
 No language model can guarantee semantic equivalence for arbitrary descriptions. A 110-character budget can be incompatible with retaining all material facts. The app combines word-budget guidance, bounded drafting/revision, conservative whole-phrase and unit formatting, hard format checks, protected numeric tokens, and a separate model review. Incidental narrative enjoyment may be omitted; product attributes and factual claims remain material. Unresolved items block file export and show their locations. Human review is still recommended for changed wording. The original is never overwritten.
+
+## Browser processing, V1.2
+
+[WebLLM](https://github.com/mlc-ai/web-llm) was inspected, but its current prebuilt Gemma 4 model list provides E2B rather than the qualified 12B model. [wllama 3.8.1](https://github.com/ngxson/wllama) supports the existing GGUF with WebGPU and asynchronous file reads. Actual browser loading and shortening were tested with the same pinned 12B Q4_0 model. CPU-only fallback is not offered for this large model.
+
+`llama-gguf-split` produces browser-compatible shards. `scripts/prepare_browser_model.py` verifies their data byte-for-byte against slices of the original model and publishes only shard headers and offsets. The browser downloads and hashes the official model into its own OPFS storage, then constructs shards from file slices. This avoids another public copy of 7 GB weights. Input text and documents stay in browser memory and are never posted to an inference server.

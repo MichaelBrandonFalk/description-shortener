@@ -12,3 +12,11 @@ Description Shortener includes unmodified third-party components. Their original
 Build tooling includes altgraph (MIT), macholib (MIT), packaging (Apache-2.0/BSD-2-Clause), setuptools (MIT), and PyInstaller hooks (Apache-2.0/GPL with exception). Their installed notices are included in the bundled license folder.
 
 The native interface uses Apple's macOS system frameworks, which are provided by the operating system.
+
+## Browser runtime
+
+The GitHub Pages browser app additionally vendors wllama 3.8.1 (MIT), hash-wasm 4.12.0 (MIT), and fflate 0.8.3 (MIT). License texts are in `docs/browser/vendor/`. Browser GGUF shard metadata is derived from the same pinned Google Gemma model under Apache-2.0; model weights download directly from its official pinned URL.
+
+- [wllama](https://github.com/ngxson/wllama), WebAssembly/WebGPU bindings for llama.cpp.
+- [hash-wasm](https://github.com/Daninet/hash-wasm), incremental SHA-256 verification.
+- [fflate](https://github.com/101arrowz/fflate), local XLSX and DOCX ZIP handling.
