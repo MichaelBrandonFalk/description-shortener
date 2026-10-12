@@ -1,5 +1,5 @@
 import importlib.util,sys,tempfile,unittest,zipfile,io,hashlib,tarfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'scripts'))
 from split_archive import package
 from split_deb import package_deb
@@ -23,7 +23,7 @@ class DistributionTests(unittest.TestCase):
             self.assertTrue(all(not entry.pax_headers for entry in archive.getmembers()))
             directories={'.'}
             for entry in archive.getmembers():
-                self.assertIn(str(Path(entry.name).parent),directories,entry.name)
+                self.assertIn(str(PurePosixPath(entry.name).parent),directories,entry.name)
                 if entry.isdir():directories.add(entry.name)
             self.assertEqual(archive.extractfile('opt/description-shortener/resources/processor/model.gguf').read(),self.model.read_bytes())
             self.assertEqual(archive.getmember('opt/description-shortener/launcher').uid,0)
