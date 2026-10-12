@@ -31,6 +31,7 @@ with archive.open('xb') as output:
             while chunk:=source.read(8*1024*1024):output.write(chunk);sha.update(chunk)
 assert sha.hexdigest()==manifest['sha256'] and archive.stat().st_size==manifest['bytes'];model.unlink()
 run('sudo','mv',archive,root/'package.deb')
+run('sudo','rm','-f',root/'etc/resolv.conf')
 run('sudo','cp','-L','/etc/resolv.conf',root/'etc/resolv.conf')
 mounted=[]
 try:
