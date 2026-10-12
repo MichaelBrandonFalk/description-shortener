@@ -1,0 +1,54 @@
+name: Upload verified desktop release assets
+on:
+  workflow_dispatch:
+    inputs:
+      windows_run:
+        description: Windows archive verification run ID
+        required: true
+      linux_run:
+        description: Ubuntu archive verification run ID
+        required: true
+permissions:
+  contents: write
+  actions: read
+jobs:
+  upload:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: Description-Shortener-Windows-x64-verified
+          path: verified/windows
+          run-id: ${{ inputs.windows_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: Description-Shortener-Linux-x64-verified
+          path: verified/linux
+          run-id: ${{ inputs.linux_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check immutable manifests and upload to the prepared draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json,subprocess
+          from pathlib import Path
+          version=Path('VERSION').read_text().strip();tag='v'+version
+          release=json.loads(subprocess.check_output(['gh','release','view',tag,'--json','isDraft']))
+          assert release['isDraft'], 'Assets are uploaded only to a new draft release.'
+          files=[]
+          for directory,target in [('windows','Windows-x64'),('linux','Linux-x64')]:
+              root=Path('verified')/directory
+              manifest=json.loads((root/f'Description-Shortener-V{version}-{target}-release.json').read_text())
+              assert manifest['version']==version and manifest['platform']==target
+              for part in manifest['parts']:
+                  if part.get('model'):continue
+                  path=root/part['filename'];assert path.parent==root and path.stat().st_size==part['bytes'];files.append(str(path))
+              files.extend(str(p) for p in root.glob('*-SHA256.txt'))
+              files.extend(str(p) for p in root.glob('*-release.json'))
+          subprocess.run(['gh','release','upload',tag,*files],check=True)
+          print('Verified Windows and Ubuntu assets uploaded to the draft release.')
+          PY
