@@ -20,8 +20,21 @@ class DistributionTests(unittest.TestCase):
             h=data[offset:offset+60];size=int(h[48:58]);name=h[:16].decode().strip().rstrip('/');members[name]=data[offset+60:offset+60+size];offset+=60+size+(size%2)
         self.assertEqual(members['debian-binary'],b'2.0\n')
         with tarfile.open(fileobj=io.BytesIO(members['data.tar'])) as archive:
+            self.assertTrue(all(not entry.pax_headers for entry in archive.getmembers()))
             self.assertEqual(archive.extractfile('opt/description-shortener/resources/processor/model.gguf').read(),self.model.read_bytes())
             self.assertEqual(archive.getmember('opt/description-shortener/launcher').uid,0)
+    def test_linux_rewrap_includes_the_model_only_once(self):
+        inside=self.folder/'resources/processor/model.gguf';inside.write_bytes(self.model.read_bytes())
+        result=package_deb(self.folder,inside,self.root/'downloads','1.3');data=self.reassemble(result)
+        offset=8
+        while offset<len(data):
+            header=data[offset:offset+60];size=int(header[48:58]);name=header[:16].decode().strip().rstrip('/')
+            if name=='data.tar':
+                with tarfile.open(fileobj=io.BytesIO(data[offset+60:offset+60+size])) as archive:
+                    self.assertEqual([p.name for p in archive.getmembers()].count('opt/description-shortener/resources/processor/model.gguf'),1)
+                return
+            offset+=60+size+(size%2)
+        self.fail('Missing data.tar')
     def test_immutable_parts_cannot_be_overwritten(self):
         package(self.folder,self.model,self.root/'downloads','Windows-x64','1.3')
         with self.assertRaises(RuntimeError):package(self.folder,self.model,self.root/'downloads','Windows-x64','1.3')

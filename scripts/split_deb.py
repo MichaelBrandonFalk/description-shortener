@@ -13,14 +13,15 @@ def package_deb(folder,model,output,version):
         def __init__(self):self.file=model.open('rb')
         def read(self,n):sink.phase='model';return self.file.read(n)
     try:
-        with tarfile.open(fileobj=sink,mode='w',format=tarfile.PAX_FORMAT) as archive:
+        with tarfile.open(fileobj=sink,mode='w',format=tarfile.GNU_FORMAT) as archive:
             def add(path,name):
                 info=archive.gettarinfo(str(path),name);info.uid=info.gid=0;info.uname=info.gname='root'
                 if path.name=='chrome-sandbox':info.mode=0o4755
                 if info.isfile():
                     with path.open('rb') as source:archive.addfile(info,source)
                 else:archive.addfile(info)
-            for path in sorted(folder.rglob('*')):add(path,'opt/description-shortener/'+str(path.relative_to(folder)))
+            for path in sorted(folder.rglob('*')):
+                if path.relative_to(folder).as_posix()!='resources/processor/model.gguf':add(path,'opt/description-shortener/'+str(path.relative_to(folder)))
             launcher=b'[Desktop Entry]\nType=Application\nName=Description Shortener\nExec=/opt/description-shortener/DescriptionShortener\nTerminal=false\nCategories=Utility;\n'
             info=tarfile.TarInfo('usr/share/applications/description-shortener.desktop');info.size=len(launcher);info.mode=0o644;archive.addfile(info,io.BytesIO(launcher))
             info=tarfile.TarInfo('opt/description-shortener/resources/processor/model.gguf');info.size=model.stat().st_size;info.mode=0o644
@@ -30,7 +31,7 @@ def package_deb(folder,model,output,version):
     padding=sink.sizes['model']-model.stat().st_size
     if padding:
         old=inner_tail.read_bytes();inner_tail.write_bytes(b'\0'*padding+old);sink.sizes['model']-=padding;sink.sizes['tail']+=padding
-    installed_kib=(sum(p.stat().st_size for p in folder.rglob('*') if p.is_file())+model.stat().st_size+1023)//1024
+    installed_kib=(sum(p.stat().st_size for p in folder.rglob('*') if p.is_file() and p.relative_to(folder).as_posix()!='resources/processor/model.gguf')+model.stat().st_size+1023)//1024
     control=f'Package: description-shortener\nVersion: {version}\nArchitecture: amd64\nMaintainer: Michael Brandon Falk <MichaelBrandonFalk@users.noreply.github.com>\nInstalled-Size: {installed_kib}\nDescription: Fully local description shortening desktop preview\nDepends: libc6 (>= 2.35), libgtk-3-0, libnss3, libasound2 | libasound2t64, libgbm1, libxss1, libatk-bridge2.0-0, libdrm2, libxkbcommon0\n'.encode()
     bio=io.BytesIO()
     with tarfile.open(fileobj=bio,mode='w:gz') as archive:

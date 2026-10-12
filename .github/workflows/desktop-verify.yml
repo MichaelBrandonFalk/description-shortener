@@ -30,6 +30,14 @@ jobs:
       - name: Make room for the complete Ubuntu installer and installed model
         if: runner.os == 'Linux'
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet
+      - name: Make room for Windows archive extraction
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          foreach ($directory in @('C:\Android', 'C:\Program Files\dotnet', 'C:\Program Files (x86)\Android')) {
+            if (Test-Path $directory) { Remove-Item -LiteralPath $directory -Recurse -Force }
+          }
+          Get-PSDrive C
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: Description-Shortener-${{ runner.os == 'Windows' && 'Windows-x64' || 'Linux-x64' }}
@@ -40,9 +48,8 @@ jobs:
         env:
           PYTHONUTF8: '1'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: runner.os == 'Windows'
         with:
-          name: Description-Shortener-Windows-x64-verified
+          name: Description-Shortener-${{ runner.os == 'Windows' && 'Windows-x64' || 'Linux-x64' }}-verified
           path: build/final-downloads/*
           compression-level: 0
           retention-days: 14

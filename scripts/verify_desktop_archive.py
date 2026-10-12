@@ -1,5 +1,5 @@
 """Verify the delivered archive, then run the extracted/installed native app in CI."""
-import hashlib,json,os,shutil,subprocess,sys,urllib.request,zipfile
+import hashlib,json,os,shutil,subprocess,sys,tarfile,urllib.request,zipfile
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -23,6 +23,7 @@ with archive.open('xb') as output:
 assert archive.stat().st_size==manifest['bytes'] and sha.hexdigest()==manifest['sha256']
 print('Complete delivered archive SHA-256 and size verified.',flush=True)
 if windows:
+    model.unlink() # Keep at most two complete copies of the 7 GB weights during extraction.
     with zipfile.ZipFile(archive) as packaged:
         assert packaged.testzip() is None
         packaged.extractall(qa/'extracted')
@@ -33,7 +34,7 @@ if windows:
     processor=folder/'resources/processor';bundle(processor)
     shutil.copy2(ROOT/'licenses/llama.cpp-LICENSE',processor/'licenses/llama.cpp-LICENSE')
     shutil.copy2(ROOT/'THIRD_PARTY_NOTICES.md',processor/'licenses/THIRD_PARTY_NOTICES.md')
-    archive.unlink();model.unlink()
+    archive.unlink()
     model=processor/'model.gguf'
     final=ROOT/'build/final-downloads'
     manifest=package(folder,model,final,target,version)
@@ -50,6 +51,29 @@ if windows:
             if not entry.filename.endswith('/model.gguf'):packaged.extract(entry,qa/'extracted')
     print('Final Windows ZIP, app-local CRT files and complete notices verified.',flush=True)
 else:
+    # Preserve the unpublished native binaries, and rebuild only the installer wrapper.
+    from split_deb import package_deb
+    with archive.open('rb') as source:
+        assert source.read(8)==b'!<arch>\n'
+        while header:=source.read(60):
+            size=int(header[48:58]);name=header[:16].decode().strip().rstrip('/')
+            if name=='data.tar':
+                with tarfile.open(fileobj=source,mode='r|') as data:data.extractall(qa/'deb-extracted',filter='data')
+                break
+            source.seek(size+(size%2),1)
+        else:raise RuntimeError('The candidate installer has no data archive.')
+    folder=qa/'deb-extracted/opt/description-shortener';processor=folder/'resources/processor'
+    shutil.copy2(ROOT/'licenses/llama.cpp-LICENSE',processor/'licenses/llama.cpp-LICENSE')
+    shutil.copy2(ROOT/'THIRD_PARTY_NOTICES.md',processor/'licenses/THIRD_PARTY_NOTICES.md')
+    archive.unlink();model.unlink();model=processor/'model.gguf'
+    final=ROOT/'build/final-downloads';manifest=package_deb(folder,model,final,version)
+    sha=hashlib.sha256()
+    with archive.open('xb') as output:
+        for part in manifest['parts']:
+            path=model if part.get('model') else final/part['filename']
+            with path.open('rb') as source:
+                while chunk:=source.read(8*1024*1024):output.write(chunk);sha.update(chunk)
+    assert sha.hexdigest()==manifest['sha256'] and archive.stat().st_size==manifest['bytes']
     subprocess.run(['dpkg-deb','--info',str(archive)],check=True)
     subprocess.run(['sudo','dpkg','-i',str(archive)],check=True)
     folder=Path('/opt/description-shortener')

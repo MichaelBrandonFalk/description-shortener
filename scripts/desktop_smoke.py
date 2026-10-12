@@ -18,6 +18,9 @@ def request(data):
 try:
     expected_backend='metal' if sys.platform=='darwin' else 'cpu'
     assert request({'mode':'warm','request_id':'warm'})['backend']==expected_backend
+    if os.name=='nt':
+        from windows_support import verify_loaded
+        verify_loaded(p.pid,resources)
     cases=json.loads((ROOT/'benchmarks/cases.json').read_text())
     # Generation, material detail retention, planned action, and numeric/negation checks.
     for case in cases:
