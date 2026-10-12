@@ -1,5 +1,10 @@
 # Changelog
 
+## Website hosting correction
+
+- Publish the public download page on GitHub Pages, matching the other app download pages.
+- Update the repository homepage and download-page links. V1.1 app and ZIP remain unchanged.
+
 ## V1.1
 
 - Bundle the official Gemma 4 12B QAT model; no account or separate model setup.

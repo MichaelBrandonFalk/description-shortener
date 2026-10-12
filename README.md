@@ -2,7 +2,7 @@
 
 A self-contained, fully local Mac app that shortens descriptions to 110 characters or fewer, including spaces. No account, API key, Python installation, or model download is needed after installing the app.
 
-[Download page](https://description-shortener.great-americ-8514.chatgpt.site) · [Versioned releases](https://github.com/MichaelBrandonFalk/description-shortener/releases) · [Open-source research](docs/research.md)
+[Download page](https://michaelbrandonfalk.github.io/description-shortener/) · [Versioned releases](https://github.com/MichaelBrandonFalk/description-shortener/releases) · [Open-source research](docs/research.md)
 
 ## Use
 
@@ -61,3 +61,9 @@ Use `scripts/release.sh` to publish the current verified version after committin
 ## Open source
 
 See [third-party notices](THIRD_PARTY_NOTICES.md) and [research](docs/research.md). Credits are linked on the download page and at the bottom of the app. Full bundled license texts are available through the app's Licenses button.
+
+## Download page hosting
+
+The public download page is hosted on GitHub Pages from `main:/docs`. Edit `docs/index.html` and push to main to publish page updates. Website hosting corrections do not change the Mac binary or its immutable versioned release.
+
+The complete V1.1 ZIP is about 7 GB, so its Download button uses the existing streaming endpoint to deliver one self-contained ZIP. The public page, source code and release history are on GitHub. Keep that endpoint available for existing downloads.
