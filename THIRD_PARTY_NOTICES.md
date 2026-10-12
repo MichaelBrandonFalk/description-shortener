@@ -24,3 +24,5 @@ The GitHub Pages browser app additionally vendors wllama 3.8.1 (MIT), hash-wasm 
 ## Windows and Linux desktop previews
 
 The desktop previews use [Electron 44.7.0](https://github.com/electron/electron) (MIT) and its bundled Chromium/Node.js notices. Their included `LICENSE` and `LICENSES.chromium.html` files ship with the desktop runtime. Packaging uses [@electron/packager 20.3.0](https://github.com/electron/packager) (BSD-2-Clause). These previews bundle the same Google model and Python processing dependencies as the Mac build, plus official llama.cpp b11531 CPU and Vulkan binaries.
+
+The Windows preview additionally includes unmodified Microsoft Visual C++ x64 runtime DLLs from the CI host's Visual Studio redistributable directory, using [Microsoft's local deployment method](https://learn.microsoft.com/en-us/cpp/windows/choosing-a-deployment-method). These Microsoft components are proprietary and retain Microsoft's terms. Bundled notices record their source version and SHA-256 values. They are included beside the model runtime so a separate C++ runtime installation is unnecessary.

@@ -39,3 +39,10 @@ jobs:
       - run: python scripts/verify_desktop_archive.py
         env:
           PYTHONUTF8: '1'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: runner.os == 'Windows'
+        with:
+          name: Description-Shortener-Windows-x64-verified
+          path: build/final-downloads/*
+          compression-level: 0
+          retention-days: 14

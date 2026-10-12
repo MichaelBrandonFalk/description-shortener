@@ -42,6 +42,9 @@ for name in ['lxml','pyinstaller','altgraph','macholib','packaging','setuptools'
 for kind in ['cpu','vulkan']:
     for path in (ROOT/'build'/('runtime-'+kind)).rglob('*'):
         if path.is_file() and any(word in path.name.upper() for word in ['LICENSE','LICENCE','NOTICE']):shutil.copy2(path,processor/'licenses'/(kind+'-'+path.name))
+if WINDOWS:
+    from windows_support import bundle
+    bundle(processor)
 # Hard links avoid duplicating the pinned 7 GB weights on CI disks.
 linked=processor/'model.gguf'
 if not linked.exists():os.link(model,linked)

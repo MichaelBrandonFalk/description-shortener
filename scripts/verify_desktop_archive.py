@@ -27,6 +27,28 @@ if windows:
         assert packaged.testzip() is None
         packaged.extractall(qa/'extracted')
     folder=next((qa/'extracted').glob('DescriptionShortener-*'))
+    # Finalize the unpublished Windows candidate with app-local CRT dependencies.
+    from windows_support import bundle
+    from split_archive import package
+    processor=folder/'resources/processor';bundle(processor)
+    shutil.copy2(ROOT/'licenses/llama.cpp-LICENSE',processor/'licenses/llama.cpp-LICENSE')
+    shutil.copy2(ROOT/'THIRD_PARTY_NOTICES.md',processor/'licenses/THIRD_PARTY_NOTICES.md')
+    archive.unlink();model.unlink()
+    model=processor/'model.gguf'
+    final=ROOT/'build/final-downloads'
+    manifest=package(folder,model,final,target,version)
+    archive=qa/manifest['archive'];sha=hashlib.sha256()
+    with archive.open('xb') as output:
+        for part in manifest['parts']:
+            path=model if part.get('model') else final/part['filename']
+            with path.open('rb') as source:
+                while chunk:=source.read(8*1024*1024):output.write(chunk);sha.update(chunk)
+    assert sha.hexdigest()==manifest['sha256'] and archive.stat().st_size==manifest['bytes']
+    with zipfile.ZipFile(archive) as packaged:
+        assert packaged.testzip() is None
+        for entry in packaged.infolist():
+            if not entry.filename.endswith('/model.gguf'):packaged.extract(entry,qa/'extracted')
+    print('Final Windows ZIP, app-local CRT files and complete notices verified.',flush=True)
 else:
     subprocess.run(['dpkg-deb','--info',str(archive)],check=True)
     subprocess.run(['sudo','dpkg','-i',str(archive)],check=True)
