@@ -38,7 +38,7 @@ try:
     for source in ['/dev','/proc','/sys']:
         destination=str(root)+source;run('sudo','mount','--rbind',source,destination);run('sudo','mount','--make-rslave',destination);mounted.append(destination)
     run('sudo','chroot',root,'apt-get','update')
-    run('sudo','chroot',root,'env','DEBIAN_FRONTEND=noninteractive','apt-get','install','-y','/package.deb','xvfb','python3-lxml')
+    run('sudo','chroot',root,'env','DEBIAN_FRONTEND=noninteractive','apt-get','install','-y','/package.deb','xvfb','python3-lxml','dbus-x11')
     run('sudo','rm',root/'package.deb')
     run('sudo','mkdir','-p',root/'qa')
     for directory in ['scripts','src','tests','benchmarks']:run('sudo','cp','-r',ROOT/directory,root/'qa'/directory)
@@ -46,7 +46,7 @@ try:
     run('sudo','chroot',root,'useradd','-m','-s','/bin/bash','appcheck')
     sandbox=root/'opt/description-shortener/chrome-sandbox'
     assert sandbox.stat().st_uid==0 and sandbox.stat().st_mode&0o7777==0o4755
-    run('sudo','chroot',root,'runuser','-u','appcheck','--','xvfb-run','-a','/opt/description-shortener/DescriptionShortener','--ui-smoke-test')
+    run('sudo','chroot',root,'runuser','-u','appcheck','--','dbus-run-session','--','xvfb-run','-a','/opt/description-shortener/DescriptionShortener','--ui-smoke-test','--disable-gpu','--enable-logging=stderr')
     run('sudo','chroot',root,'runuser','-u','appcheck','--','python3','/qa/scripts/desktop_smoke.py','/opt/description-shortener/resources/processor')
     print('Linux Mint 22.3 userspace: DEB installation, sandbox, UI, model and file processing passed.',flush=True)
 finally:
