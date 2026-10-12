@@ -1,17 +1,17 @@
 # Description Shortener
 
-A self-contained, fully local Mac app that shortens descriptions to a chosen maximum character count, including spaces and punctuation. The default and minimum are 110. No account, API key, Python installation, or model download is needed after installing the app.
+A self-contained, fully local desktop app that shortens descriptions to a chosen maximum character count, including spaces and punctuation. The default and minimum are 110. No account, API key, Python installation, or model download is needed after installing the app.
 
 [Download page](https://michaelbrandonfalk.github.io/description-shortener/) · [Versioned releases](https://github.com/MichaelBrandonFalk/description-shortener/releases) · [Open-source research](docs/research.md)
 
 ## Use
 
-1. Unzip the download and drag **Description Shortener V1.2.app** to Applications.
+1. On Mac, unzip the download and drag **Description Shortener V1.3.app** to Applications.
 2. Open the app. Paste one description per line, or choose/drop a file.
 3. Click **Shorten description** or **Shorten & save copy**.
 4. Copy the text or use the saved file. Review details lists changed descriptions and any blocked locations.
 
-V1.2 is ad-hoc signed, not Apple notarized. On first launch, macOS may require approving the app in System Settings → Privacy & Security → Open Anyway. This does not require disabling Gatekeeper. Developer ID signing is required for a future notarized release.
+The Mac app is ad-hoc signed, not Apple notarized. On first launch, macOS may require approving the app in System Settings → Privacy & Security → Open Anyway. This does not require disabling Gatekeeper. Developer ID signing is required for a future notarized release.
 
 Use **Settings** to choose a whole-number maximum of at least 110. Spaces, punctuation and Unicode code points count toward the total. Changing the setting clears previous results and separates the model cache by limit.
 
@@ -77,3 +77,9 @@ The complete V1.1 ZIP is about 7 GB, so its Download button uses the existing st
 Paste text or select XLSX, CSV, DOCX or UTF-8 TXT files. No text or document is uploaded for inference. The browser saves a new file and retains sheet names, formulas, non-description values and untouched Office package content. Complex Word fields or tracked changes need review; legacy document formats and PDF use the Mac app. Browser CSV quoting may normalize, while delimiter, BOM, line endings, order and other field values are retained.
 
 Run `node --test tests/browser.test.mjs` for browser counting, limit, cache and CSV checks. `scripts/export_browser_rules.py` keeps the model instructions and JSON schemas synchronized with the Python engine. `scripts/prepare_browser_model.py` verifies GGUF shard metadata against the pinned original weights.
+
+## Windows and Ubuntu previews (V1.3)
+
+The same download page offers a self-contained Windows x64 ZIP and Ubuntu 22.04 x64 DEB. Extract the entire Windows folder and open DescriptionShortener.exe, or install the Ubuntu DEB with your package installer. Python and the pinned model are included. The Windows preview is unsigned.
+
+These previews support pasted text, XLSX, CSV, DOCX and TXT. Mac document conversion and PDF import remain Mac-only. CPU processing is checked on Windows Server 2022 and Ubuntu 22.04 hosted runners using all 11 actual-model benchmarks, selected-limit/cache checks and packaged file processing. The exact downloadable archives are also reconstructed and verified, extracted/installed, and used to launch the native app. GPU acceleration and consumer hardware remain unqualified. See [desktop details](desktop/README.md).

@@ -4,9 +4,10 @@
 
 - Add Windows x64 and Ubuntu Linux x64 desktop preview builds with the same pinned local model and Python shortening engine.
 - Bundle an Electron interface, CPU runtime and optional Vulkan runtime; fall back to CPU when GPU startup fails.
-- Add Windows process cleanup and UTF-8 helper communication.
+- Add Windows process cleanup, UTF-8 helper communication and app-local C++ runtime dependencies.
 - Export safely to filesystems without hard-link support.
-- Build and test the actual packaged helpers on Windows and Ubuntu CI runners. GPU support remains unverified.
+- Build and test packaged helpers on Windows and Ubuntu CI runners, then reconstruct and verify the final ZIP/DEB and exercise extracted/installed apps.
+- Use dpkg-compatible GNU tar headers and root-owned Chromium sandbox permissions in the Ubuntu installer. GPU support remains unverified.
 
 ## V1.2
 

@@ -29,3 +29,9 @@ No language model can guarantee semantic equivalence for arbitrary descriptions.
 [WebLLM](https://github.com/mlc-ai/web-llm) was inspected, but its current prebuilt Gemma 4 model list provides E2B rather than the qualified 12B model. [wllama 3.8.1](https://github.com/ngxson/wllama) supports the existing GGUF with WebGPU and asynchronous file reads. Actual browser loading and shortening were tested with the same pinned 12B Q4_0 model. CPU-only fallback is not offered for this large model.
 
 `llama-gguf-split` produces browser-compatible shards. `scripts/prepare_browser_model.py` verifies their data byte-for-byte against slices of the original model and publishes only shard headers and offsets. The browser downloads and hashes the official model into its own OPFS storage, then constructs shards from file slices. This avoids another public copy of 7 GB weights. Input text and documents stay in browser memory and are never posted to an inference server.
+
+## V1.3 desktop portability checks
+
+Windows x64 and Ubuntu 22.04 x64 reuse the pinned model and native processor through Electron. Native CI runs checked all 11 model cases and the extracted/installed application. The Windows candidate needed app-local Microsoft C++ runtime DLLs; actual process-module checks confirmed those files loaded from the app folder. Ubuntu installation caught and resolved PAX-header and missing-directory issues before publication.
+
+The pinned Linux CPU runtime requires at most GLIBC 2.34, GLIBCXX 3.4.30 and CXXABI 1.3.13. Ubuntu 22.04 provides [GCC 12 libstdc++](https://packages.ubuntu.com/jammy/amd64/libstdc%2B%2B6). Use current Ubuntu updates. This qualifies the tested x64 Ubuntu target, not every distribution or GPU. [Microsoft local deployment guidance](https://learn.microsoft.com/en-us/cpp/windows/choosing-a-deployment-method) describes the Windows runtime packaging method.
