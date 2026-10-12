@@ -213,6 +213,11 @@ let paper = Color(red: 0.965, green: 0.961, blue: 0.941)
                             let edits = event["edits"] as? [[String: Any]] ?? []
                             review = edits.map { "\($0["location"] as? String ?? "")\nOriginal: \($0["original"] as? String ?? "")\nResult: \($0["text"] as? String ?? "")\n\($0["characters"] as? Int ?? 0) / \(characterLimit) characters" }.joined(separator: "\n\n")
                         }
+                        let warnings = event["warnings"] as? [[String: Any]] ?? []
+                        if !warnings.isEmpty {
+                            status += " May need review: supporting details may be omitted."
+                            review += "\n" + warnings.map { "\($0["location"] as? String ?? ""): \($0["reason"] as? String ?? "")" }.joined(separator: "\n")
+                        }
                         progress = 1; busy = false; cleanup()
                     } catch { fail(error.localizedDescription) }
                 } else {

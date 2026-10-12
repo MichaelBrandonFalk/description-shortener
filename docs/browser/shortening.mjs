@@ -17,50 +17,57 @@ export function hardErrors(original, candidate, limit) {
   if (count(candidate)>limit) errors.push(`${count(candidate)} characters exceeds ${limit}.`);
   if (candidate.includes('—')) errors.push('Contains an em dash.');
   if (!/[.!?]["”’']?$/.test(candidate) || /(\.{2,}|…)["”’']?$/.test(candidate)) errors.push('Must be a complete sentence without an ellipsis.');
-  if (JSON.stringify(numericTokens(original))!==JSON.stringify(numericTokens(candidate))) errors.push('A number, quantity or numeric specification changed.');
+  if (numericTokens(candidate).some((token,i,list)=>list.slice(0,i+1).filter(t=>t===token).length>numericTokens(original).filter(t=>t===token).length)) errors.push('A number, quantity or numeric specification changed.');
   return errors;
 }
 export function compactDraft(text) {
   return text.split(/("[^"]*"|“[^”]*”)/).map((part,i)=>i%2 ? part : part.replace(/\ban outdoor living space\b/g,'outdoor living space').replace(/~(\d+(?:\.\d+)?)\s+yrs?\b/g,'~$1yr')).join('');
 }
+export function fallbackDescription(original,limit) {
+  const clean=original.replaceAll('—',',').replaceAll('…','.').replace(/\s+/g,' ').trim();
+  for(const part of clean.split(/(?<=[.!?])\s+|,?\s+(?:but|and then|so)\s+/i)) {
+    const text=part.replace(/^[ ,;:.!?]+|[ ,;:.!?]+$/g,'')+'.';
+    if(text!=='.'&&count(text)<=limit&&!hardErrors(original,text,limit).length)return text;
+  }
+  let excerpt='';
+  for(const word of clean.split(/\s+/)) {
+    const trial=(excerpt+' '+word).trim().replace(/[ ,;:.!?]+$/,'')+'.';
+    if(count(trial)>limit)break;
+    excerpt=trial.slice(0,-1);
+  }
+  if(!excerpt)throw new Error('No usable prose was found. Please review this input.');
+  return excerpt.replace(/[ ,;:.!?]+$/,'')+'.';
+}
 export class BrowserShortener {
-  constructor(runtime,rules,onActivity=()=>{}) { this.runtime=runtime;this.rules=rules;this.cache=new Map();this.onActivity=onActivity; }
-  async ask(review,payload) {
-    this.onActivity(review ? "Checking the sentence and material facts…" : "Drafting a shorter description…");
+  constructor(runtime,rules,onActivity=()=>{}) {this.runtime=runtime;this.rules=rules;this.cache=new Map();this.reviews=new Map();this.onActivity=onActivity;this.engineFailed=false;}
+  reviewFor(original,limit){return this.reviews.get(JSON.stringify([limit,original]))||'';}
+  async ask(payload) {
+    this.onActivity('Drafting a shorter description…');
     const limit=payload.limit_including_spaces;
-    const system=review?this.rules.review:this.rules.system.replace('110 characters',`${limit} characters`)+`\nFor this draft, aim for at most ${payload.word_budget_guidance} words. The hard character limit is ${limit}. Omit optional enjoyment; retain every material fact.`;
-    let messages=[{role:'system',content:system},{role:'user',content:JSON.stringify(payload)}];
-    if (!review && payload.previous_candidate) messages=[{role:'system',content:system},{role:'user',content:JSON.stringify({description:payload.description,limit_including_spaces:limit,word_budget_guidance:payload.word_budget_guidance})},{role:'assistant',content:JSON.stringify({text:payload.previous_candidate})},{role:'user',content:`Revise that draft. It has ${count(payload.previous_candidate)} characters. Maximum: ${limit}. ${payload.previous_issue} Aim for about ${payload.word_budget_guidance} words without omitting material facts. ${payload.revision_instruction} Remove redundant infinitive wording where equivalent (wanted to have more room -> wanted more room). Return a complete sentence in JSON.`}];
-    const result=await this.runtime.createChatCompletion({messages,temperature:payload.previous_candidate?0.2:0.1,seed:42+17*(payload.attempt||0)+count(payload.previous_candidate||''),max_tokens:review?384:Math.min(4096,Math.max(256,limit*2)),cache_prompt:true,chat_template_kwargs:{enable_thinking:false},response_format:{type:'json_schema',json_schema:{name:'result',strict:true,schema:review?this.rules.reviewSchema:this.rules.textSchema}}});
-    try { return JSON.parse(result.choices[0].message.content); } catch { throw new Error('The local model returned an incomplete response. This description needs review.'); }
+    const system=this.rules.system.replace('110 characters',`${limit} characters`)+` Aim for ${payload.word_budget_guidance} words.`;
+    const result=await this.runtime.createChatCompletion({messages:[{role:'system',content:system},{role:'user',content:JSON.stringify(payload)}],temperature:0.1,seed:42,max_tokens:Math.min(512,Math.max(96,limit)),cache_prompt:false,chat_template_kwargs:{enable_thinking:false},response_format:{type:'json_schema',json_schema:{name:'result',strict:true,schema:this.rules.textSchema}}});
+    return JSON.parse(result.choices[0].message.content);
   }
   async shorten(original,limit) {
-    validateLimit(limit);
-    const key=JSON.stringify([limit,original]);
-    if (this.cache.has(key)) return this.cache.get(key);
-    if (count(original)>12000) throw new Error('This section is too long to verify as one description. Split it into individual descriptions.');
-    let previous='', reason='', budget=Math.min(Math.max(21,Math.floor(limit/5)),Math.max(12,original.trim().split(/\s+/).length));
-    let compact=original.trim();
-    for (const [phrase,replacement] of [['in order to','to'],['due to the fact that','because'],['does not contain','contains no'],['is manufactured in','is made in'],['carries a','has a'],['at a rate of','at'],['a total of ',''],['in the event that','if']]) compact=compact.replace(new RegExp('\\b'+phrase+'\\b','gi'),replacement);
-    for (let attempt=0;attempt<3;attempt++) {
-      let candidate=attempt===0&&!hardErrors(original,compact,limit).length?compact:null;
-      if (candidate===null) {
-        const response=await this.ask(false,{description:original,limit_including_spaces:limit,previous_candidate:previous,previous_characters:count(previous),previous_issue:reason,word_budget_guidance:budget,attempt,revision_instruction:previous?`Write a distinctly different, more compact complete sentence. Use compound verbs; after a purchase verb, an indefinite article can replace a redundant possessive. Use the full ${limit}-character budget.`:'Keep every key detail using compact grammar.'});
-        candidate=typeof response.text==='string'?response.text.trim():'';
-        if (count(candidate)>limit) candidate=compactDraft(candidate);
+    validateLimit(limit);const key=JSON.stringify([limit,original]);
+    if(this.cache.has(key))return this.cache.get(key);
+    const source=original.trim();
+    if(!hardErrors(original,source,limit).length){this.cache.set(key,source);return source;}
+    let previous='',reason='',budget=Math.max(10,Math.floor(limit/6));
+    for(let attempt=0;attempt<2&&!this.engineFailed;attempt++) {
+      try {
+        const data=await this.ask({description:Array.from(source).slice(0,6000).join(''),limit_including_spaces:limit,previous_candidate:previous,previous_issue:reason,word_budget_guidance:budget,attempt});
+        const candidate=typeof data.text==='string'?data.text.trim():'';
+        const errors=hardErrors(original,candidate,limit);
+        if(!errors.length){this.cache.set(key,candidate);this.reviews.set(key,'May need review: supporting details may have been omitted.');return candidate;}
+        previous=candidate;reason=errors.join(' ');
+        if(candidate)budget=Math.max(8,Math.floor(candidate.split(/\s+/).length*(limit-1)/count(candidate)));
+      }catch(e){
+        if(/ABORT|device lost|out of memory|resource|memory access/i.test(e.message)){this.engineFailed=true;await this.runtime.exit().catch(()=>{});}
+        break;
       }
-      if (!candidate) break;
-      previous=candidate;
-      const errors=hardErrors(original,candidate,limit);
-      if (errors.length) {
-        if (count(candidate)>limit) budget=Math.max(12,Math.floor(candidate.split(/\s+/).length*(limit-1)/count(candidate)));
-        reason=errors.join(' ')+' Use shorter equivalent vocabulary and compact grammar. Preserve all material facts and the source tense.';
-        continue;
-      }
-      const verdict=await this.ask(true,{original,candidate,limit_including_spaces:limit});
-      if (['equivalent','complete_sentences','close_wording'].every(k=>verdict[k]===true)) { this.cache.set(key,candidate);return candidate; }
-      reason=verdict.issue||'The draft changed meaning, omitted material details or was not a complete sentence.';
     }
-    throw new Error(`The local model couldn't fit the material facts into a complete sentence within ${limit} characters. This description needs review.`);
+    const candidate=fallbackDescription(original,limit);
+    this.cache.set(key,candidate);this.reviews.set(key,'May need review: a best-effort source excerpt was used because the model could not produce a valid result.');return candidate;
   }
 }

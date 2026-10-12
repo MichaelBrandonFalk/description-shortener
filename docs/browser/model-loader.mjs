@@ -6,6 +6,8 @@ export async function loadLocalModel(status,signal) {
   if (!adapter) throw new Error('A compatible GPU is unavailable. Use the Mac app on this computer.');
   if (!navigator.storage?.getDirectory) throw new Error('Local model storage is unavailable. Use a regular browser window or the Mac app.');
   const manifest=await (await fetch('./model/manifest.json')).json();
+  // A stable origin and model filename keep weights across application releases.
+  const persistent=await navigator.storage.persist?.().catch(()=>false);
   const directory=await (await navigator.storage.getDirectory()).getDirectoryHandle('description-shortener',{create:true});
   const handle=await directory.getFileHandle(MODEL_FILE,{create:true});
   let file=await handle.getFile();
@@ -54,9 +56,9 @@ export async function loadLocalModel(status,signal) {
     shards.push(new File([await response.blob(),file.slice(shard.offset,shard.offset+shard.bytes)],shard.name));
   }
   if(signal?.aborted) throw new Error('Model loading canceled.');
-  status('Loading the local model…');
+  status(persistent?'Loading the cached model (persistent storage granted)…':'Loading the cached model. Browser storage may be evicted if disk space is low…');
   const runtime=new Wllama({default:new URL('./vendor/wasm/wllama.wasm',import.meta.url).href},{logger:{debug(){},log(){},warn(){},error(){}},parallelDownloads:1});
-  try { await runtime.loadModel(shards,{n_ctx:4096,n_batch:128,n_ubatch:64,n_gpu_layers:99,n_threads:1,jinja:true,reasoning:false,reasoning_format:'deepseek'}); }
+  try { await runtime.loadModel(shards,{n_ctx:2048,n_batch:64,n_ubatch:32,n_gpu_layers:99,n_threads:1,jinja:true,reasoning:false,reasoning_format:'deepseek'}); }
   catch { await runtime.exit().catch(()=>{});throw new Error('The browser could not load this model. Check available memory, try Chrome or Edge, or use the Mac app.'); }
   if(signal?.aborted) {await runtime.exit();throw new Error('Model loading canceled.');}
   return runtime;

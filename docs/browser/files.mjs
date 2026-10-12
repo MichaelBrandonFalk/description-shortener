@@ -107,12 +107,14 @@ export async function processFile(file,shortener,limit,status) {
   if(!['xlsx','csv','docx','txt'].includes(ext))throw new Error('Choose XLSX, CSV, DOCX or TXT. The Mac app also supports other document formats.');
   const bytes=new Uint8Array(await file.arrayBuffer());
   const doc=['xlsx','docx'].includes(ext)?officeDocument(bytes,ext):textDocument(bytes,ext);
+  const warnings=[];
   for(let i=0;i<doc.items.length;i++) {
     const item=doc.items[i];status(`Checking ${i+1} of ${doc.items.length}: ${item.location}`);
     let result;
     try {result=await shortener.shorten(item.original,limit);const errors=hardErrors(item.original,result,limit);if(errors.length)throw new Error(errors.join(' '));}
     catch(error){throw new Error(`${item.location}: ${error.message} No file was exported.`);}
+    const warning=shortener.reviewFor?.(item.original,limit);if(warning)warnings.push(`${item.location}: ${warning}`);
     if(result!==item.original)item.apply(result);
   }
-  return {bytes:doc.write(),name:file.name.slice(0,-ext.length-1)+'_shortened.'+ext,checked:doc.items.length};
+  return {bytes:doc.write(),name:file.name.slice(0,-ext.length-1)+'_shortened.'+ext,checked:doc.items.length,warnings};
 }

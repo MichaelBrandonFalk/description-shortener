@@ -21,6 +21,7 @@ desktop.onEvent(event=>{
     lock(false);if(!event.ok){status(event.error||event.issues?.map(i=>i.location+': '+i.reason).join('\n')||'This description needs review. No file was exported.',true);return;}
     if(typeof event.text==='string'){$('output').value=event.text;$('copy').disabled=false;status(event.counts.length===1?event.counts[0]+' / '+limit+' characters':event.counts.length+' descriptions checked.');}
     else{saved=event.path;status(`Saved ${event.checked} checked descriptions to ${saved}`);desktop.showFile(saved);}
+    if(event.warnings?.length)status($('status').textContent+'\n'+event.warnings.map(w=>w.location+': '+w.reason).join('\n'));
   }
 });
 desktop.warm();ready();

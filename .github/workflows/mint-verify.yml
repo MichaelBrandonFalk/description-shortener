@@ -1,0 +1,25 @@
+name: Verify Linux Mint installer
+on:
+  workflow_dispatch:
+    inputs:
+      linux_run:
+        description: Successful Linux archive verification run ID
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  mint:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Make room for Linux Mint userspace and the installed model
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: Description-Shortener-Linux-x64-verified
+          path: downloads
+          run-id: ${{ inputs.linux_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: python3 scripts/verify_mint.py

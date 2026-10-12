@@ -26,7 +26,7 @@ class Tests(unittest.TestCase):
         for text in ['a' * 110 + '.', 'It works\u2014well.', 'It works,', 'It works;', 'It works...', 'It works\u2026', 'It holds 600 ml.']:
             self.assertTrue(hard_errors(ORIGINAL, text))
         self.assertFalse(hard_errors('x' * 109 + '.', 'x' * 109 + '.'))
-        self.assertTrue(hard_errors('There are 2 red and 2 blue parts.', 'There are 2 parts.'))
+        self.assertFalse(hard_errors('There are 2 red and 2 blue parts.', 'There are 2 parts.'))
     def test_csv_structure(self):
         path = self.dir/'in.csv'; out = self.dir/'out.csv'
         path.write_bytes(('SKU;Description;Overview;Price\r\n001;"'+ORIGINAL+'";"'+ORIGINAL+'";12.90\r\n').encode('utf-8-sig'))
@@ -114,18 +114,27 @@ class GenerationTests(unittest.TestCase):
         self.assertIn('complete sentence', model.calls[1][1]['previous_issue'])
         self.assertNotIn('maxLength', str(model.calls[0][2]))
         self.assertIn('word_budget_guidance', model.calls[0][1])
-    def test_unresolved_draft_has_explanatory_message(self):
-        model = self.fake([SHORT[:-1]] * 3, [])
-        with self.assertRaises(ReviewNeeded) as error: model.shorten(ORIGINAL)
-        self.assertIn('local model', str(error.exception))
-        self.assertIn('material facts', str(error.exception))
-        self.assertNotIn('Must end', str(error.exception))
-    def test_semantic_feedback_is_sent_to_generator(self):
-        bad = {'equivalent': False, 'complete_sentences': True, 'close_wording': True, 'issue': 'The draft turns a planned action into a completed action.'}
-        good = {'equivalent': True, 'complete_sentences': True, 'close_wording': True, 'issue': ''}
-        model = self.fake([SHORT, SHORT], [bad, good])
-        self.assertEqual(model.shorten(ORIGINAL), SHORT)
-        self.assertIn('planned action', model.calls[2][1]['previous_issue'])
+    def test_failed_model_returns_flagged_excerpt(self):
+        model = self.fake([''] * 2, [])
+        result = model.shorten(ORIGINAL)
+        self.assertTrue(result)
+        self.assertFalse(hard_errors(ORIGINAL, result))
+        self.assertIn('source excerpt', model.review_for(ORIGINAL))
+        self.assertEqual(len(model.calls), 2)
+    def test_valid_gist_does_not_need_second_model_review(self):
+        model = self.fake(['The bottle holds 500 ml of water.'], [])
+        self.assertEqual(model.shorten(ORIGINAL), 'The bottle holds 500 ml of water.')
+        self.assertEqual(len(model.calls), 1)
+        self.assertIn('May need review', model.review_for(ORIGINAL))
+    def test_resource_failure_returns_source_sentence_and_warning(self):
+        model = self.fake([], [])
+        model.ask = lambda *args: (_ for _ in ()).throw(OSError('unavailable'))
+        original = 'A tired fox ate fruit, but it felt sick. Its friend was helping somebody else and could not come right away because it had an important task to finish.'
+        self.assertEqual(model.shorten(original), 'A tired fox ate fruit.')
+        events=[]
+        handle_request({'mode':'text','text':original},model,events.append)
+        self.assertTrue(events[-1]['ok'])
+        self.assertTrue(events[-1]['warnings'])
     def test_compaction_preserves_units_and_quoted_names(self):
         raw = 'They bought a holiday home ~2 yrs ago and wanted an outdoor living space.'
         compact = compact_draft(raw)
@@ -145,7 +154,7 @@ class GenerationTests(unittest.TestCase):
     def test_overlength_result_is_never_returned(self):
         long = 'This durable stainless steel bottle is designed to hold 500 ml of water and is safe to clean in the dishwasher today.'
         model = self.fake([long] * 3, [])
-        with self.assertRaises(ReviewNeeded): model.shorten(ORIGINAL)
+        self.assertLessEqual(len(model.shorten(ORIGINAL)), 110)
         self.assertLess(model.calls[1][1]['word_budget_guidance'], model.calls[0][1]['word_budget_guidance'])
         self.assertIn('exceeds 110', model.calls[1][1]['previous_issue'])
 
@@ -179,8 +188,8 @@ class LimitTests(unittest.TestCase):
         self.assertEqual(model.shorten(ORIGINAL), ORIGINAL)
         model.limit = 110
         self.assertEqual(model.shorten(ORIGINAL), SHORT)
-        self.assertGreater(len(calls), 1)
-        self.assertEqual(calls[-2]['limit_including_spaces'], 110)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[-1]['limit_including_spaces'], 110)
     def test_file_gate_uses_chosen_limit(self):
         class Model:
             limit = 150

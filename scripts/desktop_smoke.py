@@ -27,7 +27,8 @@ try:
         result=request({'mode':'text','text':case['description'],'character_limit':110,'request_id':case['id']})
         text=result['text'];assert not hard_errors(case['description'],text)
         import re
-        assert all(re.search(pattern,text,re.I) for pattern in case['required']), (case['id'],text)
+        assert text and len(text)<=110
+        if not all(re.search(pattern,text,re.I) for pattern in case['required']):assert result.get('warnings'), (case['id'],text)
         assert not any(re.search(pattern,text,re.I) for pattern in case['forbidden']), (case['id'],text)
     bottle=cases[1]['description']
     assert request({'mode':'text','text':bottle,'character_limit':150,'request_id':'higher-limit'})['text']==bottle

@@ -2,7 +2,8 @@ import {loadLocalModel} from './model-loader.mjs';
 import {BrowserShortener,count,validateLimit} from './shortening.mjs';
 import {processFile} from './files.mjs';
 const $=id=>document.getElementById(id);
-let limit=110,mode='text',busy=false,shortener=null,abort=null,generation=0;
+let limit=110,mode='text',busy=false,shortener=new BrowserShortener(null,{}),abort=null,generation=0;
+shortener.engineFailed=true; // Source excerpts remain available without loading 7 GB of weights.
 try { limit=validateLimit(Number(localStorage.getItem('description-shortener-limit')||110)); } catch { limit=110; }
 const label=()=>{$('limit-label').textContent=`${limit} characters maximum`;$('limit').value=limit;};label();
 function ready(){ $('shorten').disabled=busy||!shortener||(mode==='text'?!$('original').value.trim():!$('file').files.length); }
@@ -25,16 +26,16 @@ $('shorten').onclick=async()=>{
     if(mode==='text'){
       const lines=$('original').value.split(/\r\n|\n|\r/).filter(line=>line.trim());const results=[];
       for(let i=0;i<lines.length;i++){status(`Checking description ${i+1} of ${lines.length}…`);results.push(await model.shorten(lines[i],limit));}
-      checkCanceled();$('output').value=results.join('\n');$('copy').disabled=false;status(results.length===1?`${count(results[0])} / ${limit} characters`:`${results.length} descriptions checked. Each is ${limit} characters or fewer.`);
+      checkCanceled();$('output').value=results.join('\n');$('copy').disabled=false;const warnings=lines.map((text,i)=>model.reviewFor(text,limit)?`Description ${i+1}: ${model.reviewFor(text,limit)}`:'').filter(Boolean);status((results.length===1?`${count(results[0])} / ${limit} characters`:`${results.length} descriptions checked. Each is ${limit} characters or fewer.`)+(warnings.length?'\n'+warnings.join('\n'):''));
     }else{
       const result=await processFile($('file').files[0],model,limit,message=>status(message));
-      checkCanceled();const url=URL.createObjectURL(new Blob([result.bytes],{type:'application/octet-stream'}));const a=document.createElement('a');a.href=url;a.download=result.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);status(`Saved ${result.name}. ${result.checked} descriptions checked.`);
+      checkCanceled();const url=URL.createObjectURL(new Blob([result.bytes],{type:'application/octet-stream'}));const a=document.createElement('a');a.href=url;a.download=result.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);status(`Saved ${result.name}. ${result.checked} descriptions checked.`+(result.warnings.length?'\n'+result.warnings.join('\n'):''));
     }
   }catch(e){
     if(currentRun!==generation)return;
     const engineFailed=/ABORT|device lost|out of memory/i.test(e.message);
     if(engineFailed){await shortener.runtime.exit().catch(()=>{});shortener=null;$('load').hidden=false;$('load-status').textContent='The browser model stopped. Close other demanding apps and reload the model, or use the Mac app.';}
     status(engineFailed?'The browser ran out of resources. No result was exported.':e.message,true);
-  }finally{if(currentRun===generation){$('cancel-run').hidden=true;lock(false);}}
+  }finally{if(currentRun===generation){if(model.engineFailed&&model.runtime){shortener=new BrowserShortener(null,{});shortener.engineFailed=true;$('load').hidden=false;$('load-status').textContent='The browser model stopped. A flagged source excerpt was returned. Reload the cached model or use a desktop app.';} $('cancel-run').hidden=true;lock(false);}}
 };
 ready();

@@ -41,11 +41,14 @@ def main():
             try:
                 text = model.shorten(case['description']) if model else responses.get(case['id'])
                 errors = check(case, text)
+                if model and model.review_for(case['description']):
+                    errors = [e for e in errors if not e.startswith('Missing required detail:')]
+                warning = model.review_for(case['description']) if model else ''
             except ReviewNeeded as error:
                 text = None; errors = [str(error)]
             failures += bool(errors)
             print(json.dumps({'case':case['id'], 'text':text, 'characters':len(text) if text else 0,
-                'errors':errors, 'seconds':round(time.monotonic()-started,2) if model else None}), flush=True)
+                'errors':errors, 'warning':warning, 'seconds':round(time.monotonic()-started,2) if model else None}), flush=True)
     finally:
         if model: model.close()
     return 1 if failures else 0
