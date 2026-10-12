@@ -1,5 +1,5 @@
 """Native-platform Windows/Linux preview builds with the same pinned model."""
-import hashlib,json,os,platform,shutil,subprocess,sys,tarfile,urllib.request,zipfile
+import hashlib,importlib.metadata,json,os,platform,shutil,subprocess,sys,tarfile,urllib.request,zipfile
 from pathlib import Path
 from split_archive import package
 from split_deb import package_deb
@@ -33,11 +33,20 @@ shutil.copytree(ROOT/'build/desktop-helper/shortener-helper',processor/'helper',
 shutil.copytree(ROOT/'licenses',processor/'licenses',dirs_exist_ok=True)
 shutil.copy2(ROOT/'THIRD_PARTY_NOTICES.md',processor/'licenses/THIRD_PARTY_NOTICES.md')
 shutil.copy2(ROOT/'LICENSE',processor/'licenses/Description-Shortener-LICENSE')
+for name in ['lxml','pyinstaller','altgraph','macholib','packaging','setuptools','pyinstaller-hooks-contrib']:
+    try: distribution=importlib.metadata.distribution(name)
+    except importlib.metadata.PackageNotFoundError: continue
+    target=processor/'licenses'/name;target.mkdir(exist_ok=True)
+    for entry in distribution.files or []:
+        if any(word in entry.name.lower() for word in ['license','copying','notice']) and distribution.locate_file(entry).is_file():shutil.copy2(distribution.locate_file(entry),target/entry.name)
+for kind in ['cpu','vulkan']:
+    for path in (ROOT/'build'/('runtime-'+kind)).rglob('*'):
+        if path.is_file() and any(word in path.name.upper() for word in ['LICENSE','LICENCE','NOTICE']):shutil.copy2(path,processor/'licenses'/(kind+'-'+path.name))
 # Hard links avoid duplicating the pinned 7 GB weights on CI disks.
 linked=processor/'model.gguf'
 if not linked.exists():os.link(model,linked)
 linked.unlink() # Model is represented by the immutable download segment below.
-run(['node','desktop/node_modules/@electron/packager/bin/electron-packager.mjs','desktop','DescriptionShortener','--platform='+('win32' if WINDOWS else 'linux'),'--arch=x64','--out=build/electron','--overwrite','--asar','--extra-resource='+str(processor),'--app-version='+VERSION])
+run(['node','desktop/node_modules/@electron/packager/bin/electron-packager.mjs','desktop','DescriptionShortener','--platform='+('win32' if WINDOWS else 'linux'),'--arch=x64','--out=build/electron','--overwrite','--asar','--extra-resource='+str(processor),'--app-version='+(VERSION+'.0' if VERSION.count('.')==1 else VERSION)])
 folder=ROOT/'build/electron'/('DescriptionShortener-'+('win32' if WINDOWS else 'linux')+'-x64')
 # Electron resources use the stable name expected by the launcher.
 (folder/'resources/desktop-processor').rename(folder/'resources/processor')

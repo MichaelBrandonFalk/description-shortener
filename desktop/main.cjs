@@ -15,7 +15,7 @@ function startWorker(){
 }
 function request(value){startWorker();worker.stdin.write(JSON.stringify(value)+'\n','utf8');}
 async function stopWorker(){
-  const stopped=worker;worker=null;active=null;if(!stopped)return;
+  const stopped=worker;worker=null;active=null;if(!stopped||stopped.exitCode!==null||stopped.signalCode!==null)return;
   if(process.platform==='win32')await new Promise(resolve=>{const killer=spawn('taskkill.exe',['/PID',String(stopped.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});killer.on('exit',resolve);killer.on('error',resolve);});
   else stopped.kill('SIGTERM');
 }
@@ -40,7 +40,7 @@ ipcMain.handle('copy',(event,text)=>{if(ownSender(event)&&typeof text==='string'
 ipcMain.handle('show-file',(event,file)=>{if(ownSender(event)&&typeof file==='string'&&fs.existsSync(file))shell.showItemInFolder(file);});
 app.whenReady().then(()=>{
   window=new BrowserWindow({width:1040,height:820,minWidth:880,minHeight:650,title:'Description Shortener V1.3',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
-  window.webContents.setWindowOpenHandler(({url})=>{if(/^https:\/\/(github\.com|huggingface\.co|lxml\.de|www\.python\.org|pyinstaller\.org)\//.test(url))shell.openExternal(url);return {action:'deny'};});
+  window.webContents.setWindowOpenHandler(({url})=>{if(/^https:\/\/(github\.com|michaelbrandonfalk\.github\.io|huggingface\.co|lxml\.de|www\.python\.org|pyinstaller\.org)\//.test(url))shell.openExternal(url);return {action:'deny'};});
   window.webContents.on('will-navigate',(event,url)=>{if(!url.startsWith('file:'))event.preventDefault();});
   window.webContents.on('did-finish-load',async()=>{
     if(!uiSmoke)return;

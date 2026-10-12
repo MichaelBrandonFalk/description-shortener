@@ -30,7 +30,8 @@ def package_deb(folder,model,output,version):
     padding=sink.sizes['model']-model.stat().st_size
     if padding:
         old=inner_tail.read_bytes();inner_tail.write_bytes(b'\0'*padding+old);sink.sizes['model']-=padding;sink.sizes['tail']+=padding
-    control=f'Package: description-shortener\nVersion: {version}\nArchitecture: amd64\nMaintainer: Michael Brandon Falk\nDescription: Fully local description shortening desktop preview\nDepends: libc6 (>= 2.35), libgtk-3-0, libnss3, libasound2 | libasound2t64, libgbm1, libxss1, libatk-bridge2.0-0, libdrm2, libxkbcommon0\n'.encode()
+    installed_kib=(sum(p.stat().st_size for p in folder.rglob('*') if p.is_file())+model.stat().st_size+1023)//1024
+    control=f'Package: description-shortener\nVersion: {version}\nArchitecture: amd64\nMaintainer: Michael Brandon Falk <MichaelBrandonFalk@users.noreply.github.com>\nInstalled-Size: {installed_kib}\nDescription: Fully local description shortening desktop preview\nDepends: libc6 (>= 2.35), libgtk-3-0, libnss3, libasound2 | libasound2t64, libgbm1, libxss1, libatk-bridge2.0-0, libdrm2, libxkbcommon0\n'.encode()
     bio=io.BytesIO()
     with tarfile.open(fileobj=bio,mode='w:gz') as archive:
         info=tarfile.TarInfo('./control');info.size=len(control);info.mode=0o644;archive.addfile(info,io.BytesIO(control))

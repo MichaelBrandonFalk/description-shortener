@@ -21,8 +21,8 @@ def package(folder,model,output,platform,version):
     try:
         with zipfile.ZipFile(sink,'w',compression=zipfile.ZIP_DEFLATED,allowZip64=True) as archive:
             for path in sorted(folder.rglob('*')):
-                if path.is_file() and path.name!='model.gguf':archive.write(path,str(Path(folder.name)/path.relative_to(folder)))
-            info=zipfile.ZipInfo(str(Path(folder.name)/'resources/processor/model.gguf'))
+                if path.is_file() and path.name!='model.gguf':archive.write(path,(Path(folder.name)/path.relative_to(folder)).as_posix())
+            info=zipfile.ZipInfo((Path(folder.name)/'resources/processor/model.gguf').as_posix())
             info.compress_type=zipfile.ZIP_STORED;info.file_size=model.stat().st_size;info.external_attr=0o100644<<16
             with archive.open(info,'w',force_zip64=True) as target:
                 sink.phase='model'

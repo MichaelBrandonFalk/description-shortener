@@ -155,7 +155,11 @@ class LocalModel:
                 from windows_job import attach_job
                 try: self.close_job = attach_job(self.process.pid)
                 except OSError:
+                    exited = self.process.poll() is not None
                     self.close()
+                    if exited:
+                        last_error = 'The local engine could not start. Check available memory.'
+                        continue
                     raise RuntimeError('The engine could not establish reliable process cleanup on this computer.')
             self.backend = backend
             for _ in range(180):
@@ -470,7 +474,7 @@ def process_file(source, destination, model, progress=lambda *args: None):
         except OSError as error:
             if isinstance(error, FileExistsError): raise
             # FAT/exFAT and some network drives do not support hard links.
-            if error.errno not in (errno.EPERM, errno.EACCES, errno.EXDEV, errno.ENOSYS, errno.EOPNOTSUPP): raise
+            if error.errno not in (errno.EPERM, errno.EACCES, errno.EXDEV, errno.ENOSYS, errno.EOPNOTSUPP, errno.EINVAL): raise
             created = False
             try:
                 with open(destination, 'xb') as output:
