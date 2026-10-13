@@ -1,5 +1,5 @@
 """Test the delivered DEB in verified Linux Mint 22.3 userspace on disposable CI.
-This is a chroot integration test, not a booted Cinnamon/GPU hardware test.
+This is a userspace-container integration test, not a booted Cinnamon/GPU hardware test.
 """
 import hashlib,json,os,shutil,subprocess,sys,urllib.request
 from pathlib import Path

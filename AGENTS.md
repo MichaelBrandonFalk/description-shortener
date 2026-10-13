@@ -11,4 +11,4 @@ This directory is its own app repository. Never publish unrelated parent-workspa
 
 - Preserve the browser origin and model cache path across app updates. Model cache identity must not depend on the application version. Do not clear cached weights when updating app code.
 - Shortening captures the gist and may drop supporting details. Return a useful draft or source excerpt with a review flag instead of blocking solely because some details were omitted. Keep flags outside copied text and exported description fields.
-- Linux Mint support needs installer and actual-model checks in Mint userspace. Distinguish chroot tests from a booted desktop or GPU hardware test.
+- Linux Mint support needs installer and actual-model checks in Mint userspace. Distinguish userspace-container tests from a booted desktop or GPU hardware test.

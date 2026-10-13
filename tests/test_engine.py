@@ -26,7 +26,7 @@ class Tests(unittest.TestCase):
         for text in ['a' * 110 + '.', 'It works\u2014well.', 'It works,', 'It works;', 'It works...', 'It works\u2026', 'It holds 600 ml.']:
             self.assertTrue(hard_errors(ORIGINAL, text))
         self.assertFalse(hard_errors('x' * 109 + '.', 'x' * 109 + '.'))
-        self.assertFalse(hard_errors('There are 2 red and 2 blue parts.', 'There are 2 parts.'))
+        self.assertFalse(hard_errors('There are 2 red and 2 blue parts.', 'There are 2 red parts.'))
     def test_csv_structure(self):
         path = self.dir/'in.csv'; out = self.dir/'out.csv'
         path.write_bytes(('SKU;Description;Overview;Price\r\n001;"'+ORIGINAL+'";"'+ORIGINAL+'";12.90\r\n').encode('utf-8-sig'))

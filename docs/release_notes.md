@@ -12,7 +12,7 @@ Complete downloads: [Mac ZIP](https://description-shortener.great-americ-8514.ch
 
 Apple Silicon/macOS 14+, Windows x64, Ubuntu 22.04 x64 and Linux Mint 22.x x64. Each native download includes the model and Python; no account, API key or separate model setup. Allow 16 GB RAM and about 25 GB installation space. Browser AI processing benefits from 24 GB RAM or more and WebGPU; source excerpts need no AI weights.
 
-Mac is ad-hoc signed, not notarized. Windows is unsigned. Windows and Linux remain previews; GPU acceleration and consumer hardware are not qualified. Linux Mint qualification covers official Mint 22.3 Cinnamon userspace in a CI chroot, including package installation and sandboxed app launch, not a booted Cinnamon session. Other Mint 22.x editions are not individually tested; LMDE is not qualified.
+Mac is ad-hoc signed, not notarized. Windows is unsigned. Windows and Linux remain previews; GPU acceleration and consumer hardware are not qualified. Linux Mint qualification covers official Mint 22.3 Cinnamon userspace in a CI userspace container, including package installation and sandboxed app launch, not a booted Cinnamon session. Other Mint 22.x editions are not individually tested; LMDE is not qualified.
 
 Outputs are best effort and should be reviewed. Excerpts can omit context or need grammatical editing. Original files and unrelated spreadsheet data are preserved. Complex tracked Word content and legacy conversion can need manual review.
 
