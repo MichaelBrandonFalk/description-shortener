@@ -13,7 +13,7 @@ iso=qa/'mint.iso'
 download('https://pub.linuxmint.io/stable/22.3/linuxmint-22.3-cinnamon-64bit.iso',iso)
 with iso.open('rb') as f:assert hashlib.file_digest(f,'sha256').hexdigest()=='a081ab202cfda17f6924128dbd2de8b63518ac0531bcfe3f1a1b88097c459bd4'
 # The pinned digest is from Mint's official linked SHA256 file, not an arbitrary container image.
-run('sudo','apt-get','update');run('sudo','apt-get','install','-y','squashfs-tools','p7zip-full')
+run('sudo','apt-get','update');run('sudo','apt-get','install','-y','squashfs-tools','p7zip-full','systemd-container')
 run('7z','e',iso,'casper/filesystem.squashfs','-o'+str(qa))
 iso.unlink();root=qa/'root'
 run('sudo','unsquashfs','-d',root,qa/'filesystem.squashfs');(qa/'filesystem.squashfs').unlink()
@@ -46,20 +46,22 @@ try:
     run('sudo','chroot',root,'useradd','-m','-s','/bin/bash','appcheck')
     sandbox=root/'opt/description-shortener/chrome-sandbox'
     assert sandbox.stat().st_uid==0 and sandbox.stat().st_mode&0o7777==0o4755
-    run('sudo','chroot',root,'runuser','-u','appcheck','--','python3','/qa/scripts/desktop_smoke.py','/opt/description-shortener/resources/processor')
-    uid=subprocess.check_output(['sudo','chroot',str(root),'id','-u','appcheck'],text=True).strip()
-    run('sudo','mkdir','-p',root/'run/dbus',root/('run/user/'+uid))
-    run('sudo','chown',uid+':'+uid,root/('run/user/'+uid));run('sudo','chmod','700',root/('run/user/'+uid))
-    bus=subprocess.check_output(['sudo','chroot',str(root),'dbus-daemon','--system','--fork','--nopidfile','--print-pid'],text=True).strip()
-    try:
-        command=['sudo','chroot',str(root),'runuser','-u','appcheck','--','env','ELECTRON_ENABLE_LOGGING=1','ELECTRON_ENABLE_STACK_DUMPING=1','XDG_RUNTIME_DIR=/run/user/'+uid,'dbus-run-session','--','xvfb-run','-a','/opt/description-shortener/DescriptionShortener','--ui-smoke-test','--disable-gpu','--disable-dev-shm-usage','--enable-logging=stderr']
-        result=subprocess.run(command)
-        if result.returncode:
-            # Root debugger follows a regular-user inferior; never disable the application sandbox.
-            subprocess.run(['sudo','chroot',str(root),'xvfb-run','-a','gdb','--batch','-ex','set exec-wrapper runuser -u appcheck --','-ex','set follow-fork-mode child','-ex','run','-ex','thread apply all bt 8','--args','/opt/description-shortener/DescriptionShortener','--ui-smoke-test','--disable-gpu','--disable-dev-shm-usage','--enable-logging=stderr'],timeout=90)
-            raise RuntimeError('Mint sandboxed UI check failed; debugger trace printed above.')
-    finally:
-        subprocess.run(['sudo','kill',bus],check=False)
+    # A container provides procfs and a real root mount, which a raw chroot does not.
+    for destination in reversed(mounted):run('sudo','umount','-R',destination)
+    mounted=[]
+    script=qa/'verify-container.sh'
+    script.write_text("""#!/bin/bash
+set -euo pipefail
+uid=$(id -u appcheck)
+mkdir -p /run/dbus /run/user/$uid
+chown $uid:$uid /run/user/$uid
+chmod 700 /run/user/$uid
+dbus-daemon --system --fork --nopidfile
+runuser -u appcheck -- env XDG_RUNTIME_DIR=/run/user/$uid dbus-run-session -- xvfb-run -a /opt/description-shortener/DescriptionShortener --ui-smoke-test --disable-gpu --enable-logging=stderr
+runuser -u appcheck -- python3 /qa/scripts/desktop_smoke.py /opt/description-shortener/resources/processor
+""")
+    run('sudo','cp',script,root/'qa/verify-container.sh')
+    run('sudo','systemd-nspawn','--directory='+str(root),'--register=no','--as-pid2','--console=pipe','/bin/bash','/qa/verify-container.sh')
     print('Linux Mint 22.3 userspace: DEB installation, sandbox, UI, model and file processing passed.',flush=True)
 finally:
     for destination in reversed(mounted):subprocess.run(['sudo','umount','-R',destination],check=False)
