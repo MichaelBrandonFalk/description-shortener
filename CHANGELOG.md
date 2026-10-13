@@ -1,5 +1,9 @@
 # Changelog
 
+## Download website update
+
+- Remove the browser option and browser-specific guidance from the download page. Direct browser links redirect to desktop downloads. V1.4 installers are unchanged.
+
 ## V1.4
 
 - Shorten to the gist, allowing supporting details to be dropped. Valid drafts are returned with a “May need review” flag instead of being withheld by a second model review.
