@@ -26,7 +26,7 @@ def run(args): subprocess.run([str(a) for a in args], check=True)
 run([sys.executable,'-m','unittest','discover','-s','tests'])
 iconset = ROOT/'build/AppIcon.iconset'
 iconset.mkdir(parents=True, exist_ok=True)
-run(['xcrun','swift','-module-cache-path',ROOT/'build/swift-cache','scripts/make_icon.swift',ROOT/'build/icon-1024.png'])
+shutil.copy2(ROOT/'assets/app-icon.png', ROOT/'build/icon-1024.png')
 for size in [16,32,128,256,512]:
     for multiplier in [1,2]:
         pixels=size*multiplier

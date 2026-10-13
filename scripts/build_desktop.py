@@ -49,7 +49,7 @@ if WINDOWS:
 linked=processor/'model.gguf'
 if not linked.exists():os.link(model,linked)
 linked.unlink() # Model is represented by the immutable download segment below.
-run(['node','desktop/node_modules/@electron/packager/bin/electron-packager.mjs','desktop','DescriptionShortener','--platform='+('win32' if WINDOWS else 'linux'),'--arch=x64','--out=build/electron','--overwrite','--asar','--extra-resource='+str(processor),'--app-version='+(VERSION+'.0' if VERSION.count('.')==1 else VERSION)])
+run(['node','desktop/node_modules/@electron/packager/bin/electron-packager.mjs','desktop','DescriptionShortener','--platform='+('win32' if WINDOWS else 'linux'),'--arch=x64','--out=build/electron','--overwrite','--asar','--icon='+str(ROOT/'assets'/('app-icon.ico' if WINDOWS else 'app-icon.png')),'--extra-resource='+str(processor),'--app-version='+(VERSION+'.0' if VERSION.count('.')==1 else VERSION)])
 folder=ROOT/'build/electron'/('DescriptionShortener-'+('win32' if WINDOWS else 'linux')+'-x64')
 # Electron resources use the stable name expected by the launcher.
 (folder/'resources/desktop-processor').rename(folder/'resources/processor')

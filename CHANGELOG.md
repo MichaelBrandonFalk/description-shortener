@@ -1,5 +1,11 @@
 # Changelog
 
+## V1.5
+
+- Use the supplied watermelon artwork for Mac, Windows and Linux application icons and the download page favicon.
+- Linux installs a theme icon for the Applications menu; desktop windows use the matching artwork.
+- Shortening behavior and the bundled model are unchanged.
+
 ## Download website update
 
 - Remove the browser option and browser-specific guidance from the download page. Direct browser links redirect to desktop downloads. V1.4 installers are unchanged.

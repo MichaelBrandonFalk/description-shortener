@@ -14,7 +14,7 @@ def package_deb(folder,model,output,version):
         def read(self,n):sink.phase='model';return self.file.read(n)
     try:
         with tarfile.open(fileobj=sink,mode='w',format=tarfile.GNU_FORMAT) as archive:
-            for name in ['opt','opt/description-shortener','usr','usr/share','usr/share/applications']:
+            for name in ['opt','opt/description-shortener','usr','usr/share','usr/share/applications','usr/share/icons','usr/share/icons/hicolor','usr/share/icons/hicolor/256x256','usr/share/icons/hicolor/256x256/apps']:
                 info=tarfile.TarInfo(name);info.type=tarfile.DIRTYPE;info.mode=0o755;info.uid=info.gid=0;info.uname=info.gname='root';archive.addfile(info)
             def add(path,name):
                 info=archive.gettarinfo(str(path),name);info.uid=info.gid=0;info.uname=info.gname='root'
@@ -24,7 +24,8 @@ def package_deb(folder,model,output,version):
                 else:archive.addfile(info)
             for path in sorted(folder.rglob('*')):
                 if path.relative_to(folder).as_posix()!='resources/processor/model.gguf':add(path,'opt/description-shortener/'+str(path.relative_to(folder)))
-            launcher=b'[Desktop Entry]\nType=Application\nName=Description Shortener\nExec=/opt/description-shortener/DescriptionShortener\nTerminal=false\nCategories=Utility;\n'
+            add(Path(__file__).resolve().parents[1]/'desktop/icon.png','usr/share/icons/hicolor/256x256/apps/description-shortener.png')
+            launcher=b'[Desktop Entry]\nType=Application\nName=Description Shortener\nExec=/opt/description-shortener/DescriptionShortener\nIcon=description-shortener\nTerminal=false\nCategories=Utility;\n'
             info=tarfile.TarInfo('usr/share/applications/description-shortener.desktop');info.size=len(launcher);info.mode=0o644;archive.addfile(info,io.BytesIO(launcher))
             info=tarfile.TarInfo('opt/description-shortener/resources/processor/model.gguf');info.size=model.stat().st_size;info.mode=0o644
             reader=Reader();archive.addfile(info,reader);reader.file.close();sink.phase='tail'

@@ -39,7 +39,7 @@ ipcMain.handle('cancel',async event=>{if(ownSender(event))await stopWorker();});
 ipcMain.handle('copy',(event,text)=>{if(ownSender(event)&&typeof text==='string')clipboard.writeText(text);});
 ipcMain.handle('show-file',(event,file)=>{if(ownSender(event)&&typeof file==='string'&&fs.existsSync(file))shell.showItemInFolder(file);});
 app.whenReady().then(()=>{
-  window=new BrowserWindow({width:1040,height:820,minWidth:880,minHeight:650,title:'Description Shortener V1.3',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  window=new BrowserWindow({width:1040,height:820,minWidth:880,minHeight:650,title:'Description Shortener V'+app.getVersion().replace(/\.0$/, ''),icon:path.join(__dirname,'icon.png'),webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   window.webContents.setWindowOpenHandler(({url})=>{if(/^https:\/\/(github\.com|michaelbrandonfalk\.github\.io|huggingface\.co|lxml\.de|www\.python\.org|pyinstaller\.org)\//.test(url))shell.openExternal(url);return {action:'deny'};});
   window.webContents.on('will-navigate',(event,url)=>{if(!url.startsWith('file:'))event.preventDefault();});
   window.webContents.on('did-finish-load',async()=>{
