@@ -1,9 +1,9 @@
 import { Wllama } from './vendor/wllama.js';
 const MODEL_FILE='gemma4-12b-qat-q4_0.gguf';
 export async function loadLocalModel(status,signal) {
-  if (!navigator.gpu) throw new Error('This browser does not support WebGPU. Use a current Chrome or Edge browser, or download the Mac app.');
+  if (!navigator.gpu) throw new Error('This browser does not support WebGPU. Use a current Chrome or Edge browser, or download a desktop app.');
   const adapter=await navigator.gpu.requestAdapter();
-  if (!adapter) throw new Error('A compatible GPU is unavailable. Use the Mac app on this computer.');
+  if (!adapter) throw new Error('A compatible GPU is unavailable. Use a desktop download on this computer.');
   if (!navigator.storage?.getDirectory) throw new Error('Local model storage is unavailable. Use a regular browser window or the Mac app.');
   const manifest=await (await fetch('./model/manifest.json')).json();
   // A stable origin and model filename keep weights across application releases.
@@ -14,7 +14,7 @@ export async function loadLocalModel(status,signal) {
   if (file.size>manifest.bytes) { const writer=await handle.createWritable();await writer.close();file=await handle.getFile(); }
   if (file.size<manifest.bytes) {
     const estimate=await navigator.storage.estimate();
-    if ((estimate.quota||0)-(estimate.usage||0)<manifest.bytes-file.size) throw new Error('Not enough browser storage for the 7 GB model. Free space or use the Mac app.');
+    if ((estimate.quota||0)-(estimate.usage||0)<manifest.bytes-file.size) throw new Error('Not enough browser storage for the 7 GB model. Free space or use a desktop download.');
     status(`Downloading model: ${Math.floor(file.size/manifest.bytes*100)}%. Descriptions stay on this device.`);
     const headers=file.size?{Range:`bytes=${file.size}-`}:{};
     const response=await fetch(manifest.url,{headers,signal});
@@ -36,7 +36,7 @@ export async function loadLocalModel(status,signal) {
     file=await handle.getFile();
     if (file.size!==manifest.bytes) throw new Error('The model download is incomplete. Choose Load model again to resume.');
   }
-  status('Verifying the model download…');
+  status('Verifying the saved model…');
   const verified=await new Promise((resolve,reject)=>{
     const worker=new Worker(new URL('./verify-model.js',import.meta.url));
     const cancel=()=>{worker.terminate();reject(new Error('Model loading canceled.'));};
@@ -59,7 +59,7 @@ export async function loadLocalModel(status,signal) {
   status(persistent?'Loading the cached model (persistent storage granted)…':'Loading the cached model. Browser storage may be evicted if disk space is low…');
   const runtime=new Wllama({default:new URL('./vendor/wasm/wllama.wasm',import.meta.url).href},{logger:{debug(){},log(){},warn(){},error(){}},parallelDownloads:1});
   try { await runtime.loadModel(shards,{n_ctx:2048,n_batch:64,n_ubatch:32,n_gpu_layers:99,n_threads:1,jinja:true,reasoning:false,reasoning_format:'deepseek'}); }
-  catch { await runtime.exit().catch(()=>{});throw new Error('The browser could not load this model. Check available memory, try Chrome or Edge, or use the Mac app.'); }
+  catch { await runtime.exit().catch(()=>{});throw new Error('The browser could not load this model. Check available memory, try Chrome or Edge, or use a desktop download.'); }
   if(signal?.aborted) {await runtime.exit();throw new Error('Model loading canceled.');}
   return runtime;
 }

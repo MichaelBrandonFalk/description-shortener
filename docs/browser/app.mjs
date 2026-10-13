@@ -35,8 +35,8 @@ $('shorten').onclick=async()=>{
   }catch(e){
     if(currentRun!==generation)return;
     const engineFailed=/ABORT|device lost|out of memory/i.test(e.message);
-    if(engineFailed){await shortener.runtime.exit().catch(()=>{});shortener=null;$('load').hidden=false;$('unload').hidden=true;$('load-status').textContent='The browser model stopped. Close other demanding apps and reload the model, or use the Mac app.';}
+    if(engineFailed){await shortener.runtime.exit().catch(()=>{});shortener=null;$('load').hidden=false;$('unload').hidden=true;$('load-status').textContent='The browser model stopped. Close other demanding apps and reload the model, or use a desktop download.';}
     status(engineFailed?'The browser ran out of resources. No result was exported.':e.message,true);
-  }finally{if(currentRun===generation){if(model.engineFailed&&model.runtime){shortener=new BrowserShortener(null,{});shortener.engineFailed=true;$('load').hidden=false;$('unload').hidden=true;$('load-status').textContent='The browser model stopped. A flagged source excerpt was returned. Reload the cached model or use a desktop app.';} $('cancel-run').hidden=true;lock(false);}}
+  }finally{if(currentRun===generation){if(model.engineFailed&&model.runtime){shortener=new BrowserShortener(null,{});shortener.engineFailed=true;$('load').hidden=false;$('unload').hidden=true;$('load-status').textContent='The browser model stopped. A flagged source excerpt was returned. Reload the cached model or use a desktop download.';} $('cancel-run').hidden=true;lock(false);}}
 };
 ready();
