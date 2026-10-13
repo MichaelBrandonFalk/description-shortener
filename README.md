@@ -6,7 +6,7 @@ A self-contained, fully local desktop app that shortens descriptions to a chosen
 
 ## Use
 
-1. On Mac, unzip the download and drag **Description Shortener V1.4.app** to Applications.
+1. On Mac, unzip the download and drag **Description Shortener V1.5.app** to Applications.
 2. Open the app. Paste one description per line, or choose/drop a file.
 3. Click **Shorten description** or **Shorten & save copy**.
 4. Copy the text or use the saved file. Review details lists changed descriptions and any review flags.
@@ -76,7 +76,7 @@ Paste text or select XLSX, CSV, DOCX or UTF-8 TXT files. No text or document is 
 
 Run `node --test tests/browser.test.mjs` for browser counting, limit, cache and CSV checks. `scripts/export_browser_rules.py` keeps the model instructions and JSON schemas synchronized with the Python engine. `scripts/prepare_browser_model.py` verifies GGUF shard metadata against the pinned original weights.
 
-## Windows, Ubuntu and Linux Mint previews (V1.4)
+## Windows, Ubuntu and Linux Mint previews (V1.5)
 
 The same download page offers a self-contained Windows x64 ZIP and Ubuntu 22.04 / Linux Mint 22.x x64 DEB. Extract the entire Windows folder and open DescriptionShortener.exe, or install the Ubuntu DEB with your package installer. Python and the pinned model are included. The Windows preview is unsigned.
 

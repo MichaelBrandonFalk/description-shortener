@@ -77,6 +77,10 @@ else:
     subprocess.run(['dpkg-deb','--info',str(archive)],check=True)
     subprocess.run(['sudo','dpkg','-i',str(archive)],check=True)
     folder=Path('/opt/description-shortener')
+    installed_icon=Path('/usr/share/icons/hicolor/256x256/apps/description-shortener.png')
+    assert installed_icon.read_bytes()==(ROOT/'desktop/icon.png').read_bytes()
+    assert 'Icon=description-shortener' in Path('/usr/share/applications/description-shortener.desktop').read_text()
+    print('Installed Linux Applications menu icon verified.',flush=True)
     sandbox=folder/'chrome-sandbox'
     assert sandbox.stat().st_uid==0 and sandbox.stat().st_mode&0o7777==0o4755
 with (folder/'resources/processor/model.gguf').open('rb') as source:assert hashlib.file_digest(source,'sha256').hexdigest()=='93567e57a8fe10b23569b9d9ec38cd005deedf71e29477c421a4b83f418a538b'
