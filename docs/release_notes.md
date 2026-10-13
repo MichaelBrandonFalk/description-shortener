@@ -19,3 +19,7 @@ Outputs are best effort and should be reviewed. Excerpts can omit context or nee
 The .bin assets are immutable distribution segments, not standalone installers. Use the complete download links above. Full SHA-256 values are supplied in each checksum/manifest asset. Older versions remain available.
 
 The browser’s **Unload model to free memory** control releases RAM/GPU resources while keeping the downloaded weights cached. **Load cached model** restores AI processing without downloading the weights again.
+
+Verification passed: 30 Python tests, 8 browser tests, actual-model Mac cases, packaged helper/file checks, native UI rendering, ZIP integrity and signature checks. Supplied regressions were tested privately; user inputs are not committed.
+
+Delivered-package checks passed on [Windows](https://github.com/MichaelBrandonFalk/description-shortener/actions/runs/38322685493), [Ubuntu](https://github.com/MichaelBrandonFalk/description-shortener/actions/runs/38322465819), and [Linux Mint 22.3 userspace](https://github.com/MichaelBrandonFalk/description-shortener/actions/runs/38327551851). Mint CPU generation took about 20–39 seconds after startup on the CI runner; Mac generation generally took 3–5 seconds after loading. Browser regression, cached-weight reuse after a code update, and unloading the model passed on a 16 GB M3 Mac. These timings are observations, not hardware guarantees.
