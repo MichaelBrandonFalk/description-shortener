@@ -38,7 +38,7 @@ try:
     for source in ['/dev','/proc','/sys']:
         destination=str(root)+source;run('sudo','mount','--rbind',source,destination);run('sudo','mount','--make-rslave',destination);mounted.append(destination)
     run('sudo','chroot',root,'apt-get','update')
-    run('sudo','chroot',root,'env','DEBIAN_FRONTEND=noninteractive','apt-get','install','-y','/package.deb','xvfb','python3-lxml','dbus-x11')
+    run('sudo','chroot',root,'env','DEBIAN_FRONTEND=noninteractive','apt-get','install','-y','/package.deb','xvfb','python3-lxml','dbus-x11','gdb')
     run('sudo','rm',root/'package.deb')
     run('sudo','mkdir','-p',root/'qa')
     for directory in ['scripts','src','tests','benchmarks']:run('sudo','cp','-r',ROOT/directory,root/'qa'/directory)
@@ -46,8 +46,20 @@ try:
     run('sudo','chroot',root,'useradd','-m','-s','/bin/bash','appcheck')
     sandbox=root/'opt/description-shortener/chrome-sandbox'
     assert sandbox.stat().st_uid==0 and sandbox.stat().st_mode&0o7777==0o4755
-    run('sudo','chroot',root,'runuser','-u','appcheck','--','dbus-run-session','--','xvfb-run','-a','/opt/description-shortener/DescriptionShortener','--ui-smoke-test','--disable-gpu','--enable-logging=stderr')
     run('sudo','chroot',root,'runuser','-u','appcheck','--','python3','/qa/scripts/desktop_smoke.py','/opt/description-shortener/resources/processor')
+    uid=subprocess.check_output(['sudo','chroot',str(root),'id','-u','appcheck'],text=True).strip()
+    run('sudo','mkdir','-p',root/'run/dbus',root/('run/user/'+uid))
+    run('sudo','chown',uid+':'+uid,root/('run/user/'+uid));run('sudo','chmod','700',root/('run/user/'+uid))
+    bus=subprocess.check_output(['sudo','chroot',str(root),'dbus-daemon','--system','--fork','--nopidfile','--print-pid'],text=True).strip()
+    try:
+        command=['sudo','chroot',str(root),'runuser','-u','appcheck','--','env','ELECTRON_ENABLE_LOGGING=1','ELECTRON_ENABLE_STACK_DUMPING=1','XDG_RUNTIME_DIR=/run/user/'+uid,'dbus-run-session','--','xvfb-run','-a','/opt/description-shortener/DescriptionShortener','--ui-smoke-test','--disable-gpu','--disable-dev-shm-usage','--enable-logging=stderr']
+        result=subprocess.run(command)
+        if result.returncode:
+            # Root debugger follows a regular-user inferior; never disable the application sandbox.
+            subprocess.run(['sudo','chroot',str(root),'xvfb-run','-a','gdb','--batch','-ex','set exec-wrapper runuser -u appcheck --','-ex','set follow-fork-mode child','-ex','run','-ex','thread apply all bt 8','--args','/opt/description-shortener/DescriptionShortener','--ui-smoke-test','--disable-gpu','--disable-dev-shm-usage','--enable-logging=stderr'],timeout=90)
+            raise RuntimeError('Mint sandboxed UI check failed; debugger trace printed above.')
+    finally:
+        subprocess.run(['sudo','kill',bus],check=False)
     print('Linux Mint 22.3 userspace: DEB installation, sandbox, UI, model and file processing passed.',flush=True)
 finally:
     for destination in reversed(mounted):subprocess.run(['sudo','umount','-R',destination],check=False)
